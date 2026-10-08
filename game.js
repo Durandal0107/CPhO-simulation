@@ -1,4 +1,4 @@
-export const talents=[{name:'物理直觉',desc:'力学初始 +12，学习收益 +15%',key:'intuition'},{name:'实验巧手',desc:'实验初始 +18',key:'hands'},{name:'稳如磐石',desc:'心态初始 +15，比赛发挥更稳定',key:'calm'},{name:'数学底子',desc:'电磁学初始 +12',key:'math'},{name:'自律达人',desc:'每周拥有 7 个行动点',key:'discipline'},{name:'乐天派',desc:'每周额外恢复 5 点心态',key:'optimist'}];
+export const talents=[{name:'物理直觉',desc:'力学初始 +12，学习收益 +15%',key:'intuition'},{name:'实验巧手',desc:'实验初始 +18',key:'hands'},{name:'稳如磐石',desc:'心态初始 +15，比赛发挥更稳定',key:'calm'},{name:'数学底子',desc:'电磁学初始 +12',key:'math'},{name:'自律达人',desc:'每天拥有 7 个行动点',key:'discipline'},{name:'乐天派',desc:'每天额外恢复 5 点心态',key:'optimist'}];
 export const actions=[{id:'mechanics',icon:'↗',name:'力学专题',desc:'从受力分析到刚体运动，建立物理直觉。',cost:2,gain:{mechanics:9,mood:-5},hint:'力学 +9 · 心态 −5'},{id:'electro',icon:'ϟ',name:'电磁学研习',desc:'画好每一条场线，推导每一个边界条件。',cost:2,gain:{electro:9,mood:-5},hint:'电磁学 +9 · 心态 −5'},{id:'thermal',icon:'☼',name:'热学与光学',desc:'在微观世界与光的波动之间寻找答案。',cost:2,gain:{thermal:9,mood:-4},hint:'热光 +9 · 心态 −4'},{id:'lab',icon:'⚗',name:'实验室训练',desc:'调平、读数、拟合，让数据说话。',cost:2,gain:{lab:10,mood:-3},hint:'实验 +10 · 心态 −3'},{id:'school',icon:'▤',name:'回归文化课',desc:'补上落下的作业，给未来留一条路。',cost:1,gain:{school:6,mood:-1},hint:'文化课 +6 · 心态 −1'},{id:'rest',icon:'♧',name:'去操场走走',desc:'放下笔。晚风和朋友也是青春的一部分。',cost:1,gain:{mood:12,school:1},hint:'心态 +12 · 文化课 +1'}];
 // 活动收益按基础值缩放；保留分数精度，避免小收益被取整吞掉。
 const statLabels={mechanics:'力学',electro:'电磁学',thermal:'热光',lab:'实验',school:'文化课',mood:'心态'};
@@ -15,11 +15,56 @@ events.push(
 {title:'离开教室的同伴',text:'一起上过第一堂竞赛课的同学决定回归文化课。收拾书包时，他把一叠实验记录递给你：“替我再往前看看。”',choices:[{name:'认真收下，约好保持联系',result:'你们约定周末一起吃饭。方向变了，友谊并没有被成绩表带走。',gain:{lab:4,mood:6}},{name:'送他一本写满批注的笔记',result:'你把扉页留白，说以后还可以一起讨论有趣的问题。物理教室外，也有很大的世界。',gain:{school:4,mood:7}}]}
 );
 
+export const statNames={mechanics:'力学',electro:'电磁学',thermal:'热学·光学',lab:'实验',school:'文化课',mood:'心态'};
+export function canChoose(state,choice){return Object.entries(choice.requires||{}).every(([key,min])=>state.stats[key]>=min);}
+export function dailyEvent(state,random=Math.random){
+  const pool=events.map((e,i)=>({...e,id:`story-${i}`}));
+  for(const key of ['mechanics','electro','thermal','lab']){
+    const min=Math.round(22+state.week*.9);
+    pool.push({id:`challenge-${key}`,title:`${statNames[key]}训练的拦路题`,text:`今天的训练最后留下了一道难题。要独立完成它，你需要${statNames[key]}达到${min}。你可以选择迎难而上，也可以承认眼下的局限。`,choices:[{name:'独立攻克难题',requires:{[key]:min},result:'你把条件拆开，一步一步推导到最后。难题变成了新的经验，专注也消耗了一些心力。',gain:{[key]:3,mood:-2}},{name:'暂时放弃，记入错题本',result:'你标记了不理解的地方，今天先到这里。未完成的题目让你有些失落，但以后仍可以回来。',gain:{mood:-3}}]});
+  }
+  if(!state.relationship&&(state.romanceCooldown||0)===0)pool.push({id:'romance-start',title:'晚自习后的告白',text:'一起讨论题目的同学在路口停下来，认真问你愿不愿意一起走下去。恋爱期间每天固定占用1行动点，并恢复2点心态，从下一天开始。',choices:[{name:'接受告白，一起走下去',relationship:true,result:'你们约定每天留一点时间给彼此。从下一天起，恋爱会固定占用1行动点，每天恢复2点心态。',gain:{mood:8}},{name:'温柔拒绝，先专注自己的路',result:'你认真解释了自己的选择。对方尊重你的决定，你也为这段坦诚的对话松了一口气。',gain:{mood:2}}]});
+  if(state.relationship){
+    pool.push({id:'romance-date',title:'一道题之外的约会',text:'对方邀你在今天的固定相处时间里去操场散步。你们可以聊聊近况，也可以带上笔记讨论明天的测验。',choices:[{name:'好好倾听彼此',result:'你们聊起最近的烦恼。被理解的感觉，让一天的疲惫轻了一点。',gain:{mood:6}},{name:'一起整理课堂笔记',result:'相处的时间里，你们互相补齐了遗漏的知识点。',gain:{school:2,mood:2}}]});
+    if(state.week-(state.relationshipSince||1)>=3)pool.push({id:'romance-breakup',title:'一段关系的句号',text:'你们的节奏渐渐不同。对方说，希望各自往前走。关系已经结束；这次选择决定你如何面对，而无法挽回分手。从下一天起不再扣除恋爱行动点。',choices:[{name:'接受告别，找朋友聊聊',relationship:false,result:'你没有掩饰难过。朋友陪你坐了很久。恋爱结束，心态下降25点，下一天恢复全部行动点。',gain:{mood:-25}},{name:'独自整理回忆',relationship:false,result:'你把共同的笔记收进抽屉。眼下的失落很重，心态下降35点，下一天恢复全部行动点。',gain:{mood:-35}}]});
+  }
+  const candidates=pool.filter(e=>e.id!==state.lastEvent);
+  const event=candidates[Math.min(candidates.length-1,Math.floor(random()*candidates.length))];
+  return {...event,day:state.week};
+}
+
 const clamp=x=>Math.max(0,Math.min(100,x));
-export function createGame(name,selected){return {version:1,name:name.trim().slice(0,16)||'物竞少年',talents:selected,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,lab:10+(selected.includes('hands')?18:0),school:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false};}
+export function createGame(name,selected){return {version:1,name:name.trim().slice(0,16)||'物竞少年',talents:selected,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,lab:10+(selected.includes('hands')?18:0),school:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};}
 export function applyGain(state,gain,learning=false){for(const [key,value]of Object.entries(gain)){state.stats[key]=clamp(state.stats[key]+(learning&&value>0&&['mechanics','electro','thermal','lab'].includes(key)&&state.talents.includes('intuition')?value*1.15:value));}}
-export function budget(state){return state.talents.includes('discipline')?7:6;}
+export function budget(state){return (state.talents.includes('discipline')?7:6)-(state.relationship?1:0);}
 export function exam(state,random=Math.random){const s=state.stats;const base=(s.mechanics+s.electro+s.thermal)/3*.72+s.lab*.28;const score=Math.round(clamp(base*(.75+s.mood/400)+(random()-.5)*(state.talents.includes('calm')?8:18)));const stage=state.week===8?'预赛':state.week===16?'复赛':'全国决赛';const threshold=state.week===8?35:state.week===16?62:82;const pass=score>=threshold;state.medals.push({stage,score,pass,title:state.week===24?(pass?'国赛金牌':score>=70?'国赛银牌':'国赛铜牌'):(pass?(state.week===8?'晋级复赛':'入选省队'):'未能晋级')});if(!pass&&state.week!==24)state.route=false;return state.medals.at(-1);}
-export function advance(state,plan,random=Math.random){if(state.ended||state.pending)throw Error('当前无法推进');const cost=plan.reduce((sum,id)=>{const action=actions.find(a=>a.id===id);if(!action)throw Error('未知行动');return sum+action.cost;},0);if(!plan.length||cost>budget(state))throw Error('行动点不足或计划为空');for(const id of plan)applyGain(state,actions.find(a=>a.id===id).gain,true);applyGain(state,{school:-3,mood:state.talents.includes('optimist')?5:-2});state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')});let result=null;if([8,16,24].includes(state.week)&&state.route){result=exam(state,random);state.log.unshift({week:state.week,text:`${result.stage}：${result.score} 分，${result.title}。`});}if(state.week===24){state.ended=true;return result;}state.week++;if(state.week%3===0)state.pending=events[Math.floor(random()*events.length)];return result;}
-export function choose(state,index){const choice=state.pending?.choices[index];if(!choice)throw Error('无效选择');applyGain(state,choice.gain);state.log.unshift({week:state.week,text:choice.result});state.pending=null;}
+export function advance(state,plan,random=Math.random){
+  if(state.ended||state.pending)throw Error('当前无法推进');
+  const cost=plan.reduce((sum,id)=>{const action=actions.find(a=>a.id===id);if(!action)throw Error('未知行动');return sum+action.cost;},0);
+  if(!plan.length||cost>budget(state))throw Error('行动点不足或计划为空');
+  for(const id of plan)applyGain(state,actions.find(a=>a.id===id).gain,true);
+  applyGain(state,{school:-3,mood:state.talents.includes('optimist')?5:-2});
+  if(state.relationship){applyGain(state,{mood:2});state.log.unshift({week:state.week,text:'恋爱日常：固定占用1行动点，心态 +2。'});}
+  if(state.romanceCooldown>0)state.romanceCooldown--;
+  state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')});
+  let result=null;
+  if([8,16,24].includes(state.week)&&state.route){result=exam(state,random);state.log.unshift({week:state.week,text:`${result.stage}：${result.score} 分，${result.title}。`});}
+  state.pending=dailyEvent(state,random);
+  state.lastEvent=state.pending.id;
+  return result;
+}
+export function choose(state,index){
+  const event=state.pending,choice=event?.choices[index];
+  if(!choice)throw Error('无效选择');
+  if(!canChoose(state,choice))throw Error('能力尚未达到要求');
+  applyGain(state,choice.gain);
+  if(typeof choice.relationship==='boolean'){
+    state.relationship=choice.relationship;
+    state.relationshipSince=choice.relationship?(event.day||state.week):null;
+    if(!choice.relationship)state.romanceCooldown=4;
+  }
+  state.log.unshift({week:event.day||state.week,text:choice.result});
+  state.pending=null;
+  if(event.day){if(state.week===24)state.ended=true;else state.week++;}
+}
 export function ending(state){const last=state.medals.at(-1);if(last?.stage==='全国决赛')return last.title==='国赛金牌'?'追光的人': '山顶的风景';if(state.stats.school>=80)return '另一条闪光的路';if(state.stats.mood>=65)return '热爱不止于奖牌';return '青春的未完成式';}

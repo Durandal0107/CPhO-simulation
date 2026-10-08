@@ -1,3 +1,4 @@
+import {validIdentity} from './identities.js';
 import {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale} from './talents.js';
 export {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale};
 export const actions=[{id:'mechanics',icon:'↗',name:'力学专题',desc:'从受力分析到刚体运动，建立物理直觉。',cost:2,gain:{mechanics:9,mood:-5},hint:'力学 +9 · 心态 −5'},{id:'electro',icon:'ϟ',name:'电磁学研习',desc:'画好每一条场线，推导每一个边界条件。',cost:2,gain:{electro:9,mood:-5},hint:'电磁学 +9 · 心态 −5'},{id:'thermal',icon:'☼',name:'热学与光学',desc:'在微观世界与光的波动之间寻找答案。',cost:2,gain:{thermal:9,mood:-4},hint:'热光 +9 · 心态 −4'},{id:'lab',icon:'⚗',name:'实验室训练',desc:'调平、读数、拟合，让数据说话。',cost:2,gain:{lab:10,mood:-3},hint:'实验 +10 · 心态 −3'},{id:'school',icon:'▤',name:'回归文化课',desc:'补上落下的作业，给未来留一条路。',cost:1,gain:{school:6,mood:-1},hint:'文化课 +6 · 心态 −1'},{id:'rest',icon:'♧',name:'去操场走走',desc:'放下笔。晚风和朋友也是青春的一部分。',cost:1,gain:{mood:12,school:1},hint:'心态 +12 · 文化课 +1'}];
@@ -39,10 +40,11 @@ export function dailyEvent(state,random=Math.random){
 }
 
 const clamp=x=>Math.max(0,Math.min(100,x));
-export function createGame(name,selected,random=Math.random){
+export function createGame(name,selected,random=Math.random,identity=null){
+ if(identity!==null&&!validIdentity(identity))throw Error('请选择有效身份');
  const legacy=Array.isArray(selected)&&selected.length===2&&selected.every(id=>legacyTalents.some(t=>t.key===id));
  if(!legacy&&!validTalents(selected))throw Error('请选择1项正面、1项负面天赋，中立天赋任选');
- const state={version:legacy?1:2,name:name.trim().slice(0,16)||'物竞少年',talents:[...selected],week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
+ const state={version:legacy?1:2,name:name.trim().slice(0,16)||'物竞少年',talents:[...selected],identity,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
  if(!legacy){state.stats.wealth=100;state.stats.popularity=10-(selected.includes('jiahao')?2:0);state.dailyPenalty=0;beginDay(state,random);}
  return state;
 }
@@ -56,12 +58,14 @@ export function effectiveGain(state,gain,learning=false,random=null){
   let value=base;
   if(learning&&random&&state.talents.includes('chaos'))value+=Math.min(8,Math.floor(random()*9))-5;
   if(value>0){
+   if(learning&&['mechanics','electro','thermal','lab','school'].includes(key))value*=state.identity==='elite'?1.2:state.identity==='prodigy'?1.15:1;
    if(state.talents.includes('crash'))value*=1.25;
    if(state.talents.includes('headstart'))value*=state.week<=prepDays(state)?.5:.8;
    if(physical.includes(key)&&state.talents.includes('allin'))value*=2;
    if(learning&&physical.includes(key)&&state.talents.includes('intuition'))value*=1.15;
   }
   if(key==='mood'&&value<0&&state.talents.includes('jiahao'))value*=.8;
+  if(key==='mood'&&value<0&&state.identity==='elite')value*=1.1;
   if(key==='school'&&state.talents.includes('allin'))value=0;
   out[key]=value;
  }
@@ -83,7 +87,8 @@ export function applyGain(state,gain,learning=false,random=null){
  checkGameOver(state);
  return actual;
 }
-export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)-(state.relationship?1:0)-(state.dailyPenalty||0);}
+export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)+(state.identity==='ordinary'?2:0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
+export function examThreshold(state,day){return (day===8?35:day===16?62:82)*examScale(state)*(state.identity==='elite'&&day!==24?1.3:1);}
 export function exam(state,random=Math.random){
  const s=state.stats,day=competitionDay(state),scale=examScale(state);
  const base=(s.mechanics+s.electro+s.thermal)/3*.72+s.lab*.28;
@@ -91,7 +96,7 @@ export function exam(state,random=Math.random){
  let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0;score=Math.max(0,score-penalty);}
  const gifted=day===16&&state.talents.includes('master')&&random()<.2;
  const stage=day===8?'预赛':day===16?'复赛':'全国决赛';
- const threshold=(day===8?35:day===16?62:82)*scale;
+ const threshold=examThreshold(state,day);
  const pass=gifted||score>=threshold;
  const result={stage,score,pass,maxScore:100*scale,penalty,gifted,title:day===24?(pass?'国赛金牌':score>=70*scale?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
  state.medals.push(result);if(!pass&&day!==24)state.route=false;return result;

@@ -2,3 +2,4 @@
 .choice-effects,.choice-requirement{display:block;font-size:11px;line-height:1.8;margin-top:6px;color:#657c59}.choice-requirement{color:#a36c4c}.choices button:disabled{opacity:.65;background:#eeeae0}.choices button:disabled .choice-requirement{color:#a55242}
 .talent-group-title{font-size:13px;margin:22px 0 12px}.talent-flavor{margin-top:10px;font-style:italic;color:#889374!important}.talents .talent{min-height:140px}
 .game-over{text-align:center;padding:80px 24px}.game-over h1{font-family:system-ui,sans-serif;font-size:clamp(42px,10vw,100px);font-weight:900;letter-spacing:.04em;line-height:1.1;margin:0 0 20px}.game-over p{font-size:14px;color:var(--muted);margin:0 0 40px}
+.identities{display:grid;gap:10px}.identities .talent{width:100%;min-height:0}

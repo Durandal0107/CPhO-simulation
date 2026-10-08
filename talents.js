@@ -3,7 +3,7 @@ export const talents=[
  {key:'master',group:'positive',name:'大手',desc:'？？的天还是黑了。',effect:'复赛有20%概率无视分数直接晋级'},
  {key:'wealthy',group:'positive',name:'家财万贯',desc:'我去，？✌',effect:'每7天财富翻倍、人缘 +1（初始财富100）'},
  {key:'headstart',group:'neutral',name:'赢在起跑线',desc:'？！低龄化！？',effect:'初始回合数增加12；额外回合数值加成−30%，原有回合数值加成−10%'},
- {key:'jiahao',group:'neutral',name:'天生嘉豪',desc:'自在极意豪。',effect:'心态消耗−20%，初始人缘−2；每天10%概率出现专属事件'},
+ {key:'jiahao',group:'neutral',name:'天生嘉豪',desc:'自在极意豪。',effect:'心态消耗−20%，初始人缘−2；每天10%专属事件机会（独有时刻／暴雨）；告白可挑战权威，随后5回合正收益×2'},
  {key:'allin',group:'neutral',name:'破釜沉舟',desc:'我再也不想学文化课了。',effect:'文化课恒定为0，物竞正收益 +100%'},
  {key:'crash',group:'negative',name:'坠机体质',desc:'Man！',effect:'正收益 +25%；考试5%扣120、10%扣80、25%扣60、50%扣40分，10%不扣分'},
  {key:'chaos',group:'negative',name:'精神错乱',desc:'？？？',effect:'每项行动的每项数值独立随机附加−5至+3，各有1/9概率'},

@@ -37,7 +37,7 @@ export function calibrateRun(player,onProgress=()=>{}){
  return {sampleSize:1000,worldSeed:player.worldSeed,semifinalists:semifinalists.length,finalists:finalists.length,actualPreExams:eligible(runs,'pre').length,actualSemiExams:eligible(semifinalists,'semi').length,actualFinalExams:eligible(finalists,'final').length,cutoffs};
 }
 export function createCalibratedGame({name,talents,identity,seed},onProgress){
- const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1,balanceVersion:2});
+ const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1,balanceVersion:2,jiahaoVersion:1});
  state.worldSeed=seed>>>0;state.eventPlan=createEventPlan(state,state.worldSeed);
  state.calibration=calibrateRun(state,onProgress);
  state.runCutoffs=state.calibration.cutoffs;
@@ -55,7 +55,7 @@ function calibrateGrades(player,onProgress){
  const cohorts={初三:450,高一:350,高二:200};
  const runs=Array.from({length:1000},(_,id)=>{
   const random=seededRandom((player.worldSeed^Math.imul(id+1,0x9e3779b1))>>>0);
-  const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion,balanceVersion:player.balanceVersion});
+  const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion,balanceVersion:player.balanceVersion,jiahaoVersion:player.jiahaoVersion});
   state.talents=[];state.dailyPenalty=0;state.log=[];state.calendarPrep=prepDays(player);
   const priorRounds=id<450?0:id<800?12:24;
   // Prior learning establishes grade differences; current-world events start on day 1.
@@ -93,5 +93,5 @@ function calibrateGrades(player,onProgress){
   }
   onProgress(Math.floor(day/totalDays(player)*100));
  }
- return {sampleSize:1000,worldSeed:player.worldSeed,...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion===1?{attributeRulesVersion:1}:{}),cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
+ return {sampleSize:1000,worldSeed:player.worldSeed,...(player.jiahaoVersion===1?{jiahaoVersion:1}:{}),...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion===1?{attributeRulesVersion:1}:{}),cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
 }

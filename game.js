@@ -47,13 +47,21 @@ export function canChoose(state,choice){return Object.entries(choice.requires||{
 export function randomEvent(state,random=Math.random){
   const current=state.balanceVersion===2;
   const academicKeys=[...physicalKeys,'school'];
-  if(state.talents.includes('jiahao')&&random()<.1)return {id:'jiahao-special',day:state.week,title:'嘉豪的独有时刻',text:'同学们又在讨论排名，你却突然进入了自己的节奏。今天，要把这份专注用在哪里？',choices:[{name:'自在极意，沉浸推导',result:'你暂时忘记比较，在一道推导中找回了节奏。',gain:{mechanics:current?2:4,mood:3}},{name:'分享自己的奇妙解法',result:'你把思路讲给身边的人，收获了意外的共鸣。',gain:{popularity:2,mood:4}}]};
+  if(state.talents.includes('jiahao')&&random()<.1){
+   const focused={id:'jiahao-special',day:state.week,title:'嘉豪的独有时刻',text:'同学们又在讨论排名，你却突然进入了自己的节奏。今天，要把这份专注用在哪里？',choices:[{name:'自在极意，沉浸推导',result:'你暂时忘记比较，在一道推导中找回了节奏。',gain:{mechanics:current?2:4,mood:3}},{name:'分享自己的奇妙解法',result:'你把思路讲给身边的人，收获了意外的共鸣。',gain:{popularity:2,mood:4}}]};
+   if(state.jiahaoVersion===1&&random()>=.5)return {id:'jiahao-rain',day:state.week,title:'暴雨中的狂欢',text:'突然下起暴雨，你却兴奋起来。此刻的操场，仿佛就是为你准备的舞台。',choices:[{name:'雨中跳舞',result:'你在雨中尽情起舞，随后生病了。快乐是真的，身体的不适也是真的。',gain:{mood:20,...Object.fromEntries(academicKeys.map(k=>[k,-1]))}},{name:'还是算了吧',result:'你收回迈向雨中的脚，却被同学嘲笑：“这可不符合你的人设。”',gain:{mood:-5}}]};
+   return focused;
+  }
   const pool=eventCatalog(state).map((e,i)=>({...e,id:`story-${i}`}));
   for(const key of physicalKeys){
     const min=Math.round(22+state.week*(current?1.2:.9));
     pool.push({id:`challenge-${key}`,title:`${statNames[key]}训练的拦路题`,text:`今天的训练最后留下了一道难题。要独立完成它，你需要${statNames[key]}达到${min}。你可以选择迎难而上，也可以承认眼下的局限。`,choices:[{name:'独立攻克难题',requires:{[key]:min},result:'你把条件拆开，一步一步推导到最后。难题变成了新的经验，专注也消耗了一些心力。',gain:{[key]:current?2:3,mood:-2}},{name:'暂时放弃，记入错题本',result:'你标记了不理解的地方，今天先到这里。未完成的题目让你有些失落，但以后仍可以回来。',gain:{mood:-3}}]});
   }
   if(!state.relationship&&(state.romanceCooldown||0)===0)pool.push({id:'romance-start',title:'晚自习后的告白',text:`一起讨论题目的同学在路口停下来，认真问你愿不愿意一起走下去。恋爱期间每天固定占用1行动点，并恢复${romanceRecovery(state)}点心态，从下一天开始。`,choices:[{name:'接受告白，一起走下去',relationship:true,result:current?'你们约定每天留一点时间给彼此。':`你们约定每天留一点时间给彼此。从下一天起，恋爱会固定占用1行动点，每天恢复${romanceRecovery(state)}点心态。`,gain:{mood:8}},{name:'温柔拒绝，先专注自己的路',result:'你认真解释了自己的选择。对方尊重你的决定，你也为这段坦诚的对话松了一口气。',gain:{mood:2}}]});
+  if(state.jiahaoVersion===1&&state.talents.includes('jiahao')){
+   const confession=pool.find(e=>e.id==='romance-start');
+   if(confession)confession.choices.push({name:'你是来挑战我的权威的吗？',result:'你昂起头，抛出一句令人错愕的反问。对方转身离开，你却进入了异常亢奋的状态。',gain:{popularity:-2},authorityBoost:5});
+  }
   if(state.relationship){
     pool.push({id:'romance-date',title:'一道题之外的约会',text:'对方邀你在今天的固定相处时间里去操场散步。你们可以聊聊近况，也可以带上笔记讨论明天的测验。',choices:[{name:'好好倾听彼此',result:'你们聊起最近的烦恼。被理解的感觉，让一天的疲惫轻了一点。',gain:current?{mood:10,...Object.fromEntries(academicKeys.map(k=>[k,-1]))}:{mood:6}},{name:'一起整理课堂笔记',result:'相处的时间里，你们互相补齐了遗漏的知识点。',gain:{school:current?1:2,mood:2}}]});
     if(state.week-(state.relationshipSince||1)>=3)pool.push({id:'romance-breakup',title:'一段关系的句号',text:'你们的节奏渐渐不同。对方说，希望各自往前走。关系已经结束；这次选择决定你如何面对，而无法挽回分手。从下一天起不再扣除恋爱行动点。',choices:[{name:'接受告别，找朋友聊聊',relationship:false,result:`你没有掩饰难过。朋友陪你坐了很久。恋爱结束，心态下降${current?10:25}点，下一天恢复全部行动点。`,gain:{mood:current?-10:-25}},current?{name:'化悲愤为力量',relationship:false,requires:{mood:50},result:'你把失落转化为了动力，投入学习。下一天恢复全部行动点。',gain:{mood:-5,...Object.fromEntries(academicKeys.map(k=>[k,1]))}}:{name:'独自整理回忆',relationship:false,result:'你把共同的笔记收进抽屉。眼下的失落很重，心态下降35点，下一天恢复全部行动点。',gain:{mood:-35}}]});
@@ -94,6 +102,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  const legacy=Array.isArray(selected)&&selected.length===2&&selected.every(id=>legacyTalents.some(t=>t.key===id));
  if(!legacy&&!validTalents(selected))throw Error('请选择1项正面、1项负面天赋，中立天赋任选');
  const state={version:legacy?1:2,scienceVersion:2,name:name.trim().slice(0,16)||'陈梓涵',talents:[...selected],identity,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,optics:15,modern:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
+ if(options.jiahaoVersion===1)state.jiahaoVersion=1;
  if(options.balanceVersion===2)state.balanceVersion=2;
  if(options.calendarVersion===3)state.calendarVersion=3;
  if(options.attributeRulesVersion===1){state.attributeRulesVersion=1;state.activityNotices=[];}
@@ -102,11 +111,13 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  return state;
 }
 export function beginDay(state,random=Math.random){
+ if(state.authorityBuff&&state.week>state.authorityBuff.end)delete state.authorityBuff;
  if(state.attributeRulesVersion===1)state.activityNotices=[];
  delete state.examNotice;
  state.dailyPenalty=0;
  if(state.talents.includes('lost')&&random()<.1){state.dailyPenalty=2;state.stats.mood=clamp(state.stats.mood+5);state.log.unshift({week:state.week,text:'迷失：沉迷电子世界，今天行动点−2、心态 +5。'});}
 }
+export const authorityBuffDays=state=>state.authorityBuff&&state.week>=state.authorityBuff.start&&state.week<=state.authorityBuff.end?state.authorityBuff.end-state.week+1:0;
 export function effectiveGain(state,gain,learning=false,random=null,judgement=null){
  const physical=physicalKeys;const out={};
  for(const [key,base]of Object.entries(gain)){
@@ -114,6 +125,7 @@ export function effectiveGain(state,gain,learning=false,random=null,judgement=nu
   if(learning&&random&&state.talents.includes('chaos'))value+=Math.min(8,Math.floor(random()*9))-5;
   if(value>0){
    if(learning&&[...physicalKeys,'school'].includes(key))value*=state.identity==='elite'?1.2:state.identity==='prodigy'?1.15:1;
+   if(authorityBuffDays(state)>0)value*=2;
    if(state.talents.includes('crash'))value*=1.25;
    if(state.talents.includes('headstart')){const rates=state.headstartMultipliers??[.5,.8];value*=rates[state.week<=prepDays(state)?0:1];}
    if(physical.includes(key)&&state.talents.includes('allin'))value*=2;
@@ -233,6 +245,10 @@ export function choose(state,index,random=Math.random){
   if(!choice)throw Error('无效选择');
   if(!canChoose(state,choice))throw Error('能力尚未达到要求');
   const actual=applyGain(state,choice.gain);
+  if(!state.ended&&choice.authorityBoost===5){
+   const start=state.week+1;state.authorityBuff={start,end:start+4};
+   state.log.unshift({week:state.week,text:`权威宣言：保持单身，第${start}至${start+4}回合正收益×2。`});
+  }
   if(typeof choice.relationship==='boolean'){
     state.relationship=choice.relationship;
     state.relationshipSince=choice.relationship?(event.day||state.week):null;

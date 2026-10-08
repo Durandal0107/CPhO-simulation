@@ -10,13 +10,14 @@ const runs=Array.from({length:1000},(_,id)=>{
  s.talents=[];s.dailyPenalty=0;s.log=[];
  return {id,state:s,pre:null,semi:null,final:null};
 });
+// 校准按本轮百分位选晋级者，不使用上个版本分数线提前淘汰。
 function simulate(run,target){
  const s=run.state;
  while(!s.ended&&competitionDay(s)<=target){
   s.route=true;
   const plan=[];let remaining=1+Math.floor(random()*budget(s));
   while(remaining>0){const available=actions.filter(a=>a.cost<=remaining);const action=available[Math.floor(random()*available.length)];plan.push(action.id);remaining-=action.cost;}
-  advance(s,plan,random);
+  advance(s,plan,random,{deferQualification:true});
   if(s.pending){const available=s.pending.choices.map((c,i)=>canChoose(s,c)?i:null).filter(i=>i!==null);choose(s,available[Math.floor(random()*available.length)],random);}
  }
  const stage=target===8?'预赛':target===16?'复赛':'全国决赛';

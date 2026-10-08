@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {createGame,advance,choose,budget,ending,actions,canChoose,dailyEvent} from '../game.js';
 test('24天完成：剧情、晋级、结局与属性边界',()=>{const s=createGame('测试',['discipline','intuition']);assert.equal(budget(s),7);Object.assign(s.stats,{mechanics:80,electro:80,thermal:80,optics:80,modern:80,lab:80});for(let i=0;i<24;i++){s.stats.mood=100;const plans=i<8?['mechanics','electro','thermal','rest']:i<16?['mechanics','electro','lab','rest']:['thermal','lab','rest','rest','rest'];advance(s,plans,()=>.5);if(s.pending)choose(s,0);}assert.equal(s.ended,true);assert.equal(s.medals.length,3);assert.equal(s.medals[0].pass,true);assert.equal(s.medals[1].pass,true);assert.ok(ending(s));for(const v of Object.values(s.stats))assert.ok(v>=0&&v<=100);assert.throws(()=>advance(s,['rest']));});
 test('超预算不改变状态；剧情未处理不能推进',()=>{const s=createGame('',['calm','hands']);const before=JSON.stringify(s);assert.throws(()=>advance(s,['lab','lab','lab','lab']));assert.equal(JSON.stringify(s),before);advance(s,['rest'],()=>.5);assert.ok(s.pending);assert.throws(()=>advance(s,['rest']));choose(s,1);assert.equal(s.pending,null);});
-test('预赛失败后仍可完成文化课路线',()=>{const s=createGame('转向',['calm','optimist']);for(let i=0;i<24;i++){advance(s,['school','school','school','school','school','rest'],()=>0);if(s.pending)choose(s,0);}assert.equal(s.route,false);assert.equal(s.medals.length,1);assert.equal(ending(s),'另一条闪光的路');});
+test('预赛失败立即结束，不能再走文化课路线',()=>{const s=createGame('转向',['calm','optimist']);for(let i=0;i<8;i++){advance(s,['school','school','school','school','school','rest'],()=>0);if(s.pending)choose(s,0);}assert.equal(s.route,false);assert.equal(s.medals.length,1);assert.equal(s.ended,true);assert.equal(s.endReason,'eliminated');assert.equal(s.week,8);assert.equal(s.pending,null);assert.throws(()=>advance(s,['rest']));});
 
 test('非心态收益维持三分之一，学习心态消耗加倍、散步恢复2点',()=>{
 const original=[{mechanics:9,mood:-5},{electro:9,mood:-5},{thermal:9,mood:-4},{optics:9,mood:-4},{modern:9,mood:-4},{lab:10,mood:-3},{school:6,mood:-1},{mood:12,school:1}];
@@ -10,7 +10,7 @@ const s=createGame('测试',['intuition','calm']);advance(s,['lab'],()=>0);asser
 });
 
 test('每天包括最后一天都有事件，事件处理完才进入下一天或结局',()=>{
- const s=createGame('测试',['calm','hands']);
+ const s=createGame('测试',['calm','hands']);Object.assign(s.stats,{mechanics:90,electro:90,thermal:90,optics:90,modern:90,lab:90});
  for(let day=1;day<=24;day++){
   assert.equal(s.week,day);advance(s,['rest'],()=>0);
   assert.equal(s.pending.day,day);assert.equal(s.ended,false);

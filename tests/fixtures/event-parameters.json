@@ -1,0 +1,344 @@
+[
+  {
+    "id": "story-0",
+    "choices": [
+      {
+        "name": "带着草稿去请教",
+        "gain": {
+          "mechanics": 2.0,
+          "mood": 2.0
+        }
+      },
+      {
+        "name": "再独立想一会儿",
+        "gain": {
+          "mechanics": 3.0,
+          "mood": -1.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "story-1",
+    "choices": [
+      {
+        "name": "打个电话，聊聊近况",
+        "gain": {
+          "mood": 3.0
+        }
+      },
+      {
+        "name": "先把这一题做完",
+        "gain": {
+          "electro": 3.0,
+          "mood": -1.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "story-2",
+    "choices": [
+      {
+        "name": "重新检查仪器零点",
+        "gain": {
+          "lab": 3.0
+        }
+      },
+      {
+        "name": "和同学一起讨论数据",
+        "gain": {
+          "lab": 2.0,
+          "mood": 2.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "story-3",
+    "choices": [
+      {
+        "name": "约他交换错题",
+        "gain": {
+          "thermal": 2.0,
+          "mood": 2.0
+        }
+      },
+      {
+        "name": "把目标写在笔记本上",
+        "gain": {
+          "mechanics": 4.0,
+          "mood": -1.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "story-4",
+    "choices": [
+      {
+        "name": "用透镜搭一个小望远镜",
+        "gain": {
+          "optics": 1.0,
+          "lab": 2.0
+        }
+      },
+      {
+        "name": "放下试卷，看看夜空",
+        "gain": {
+          "mood": 3.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "story-5",
+    "choices": [
+      {
+        "name": "重新写出每一步假设",
+        "gain": {
+          "mechanics": 2.0,
+          "electro": 1.0
+        }
+      },
+      {
+        "name": "请教练示范一次解题",
+        "gain": {
+          "mechanics": 1.0,
+          "mood": 2.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "story-6",
+    "choices": [
+      {
+        "name": "今晚补齐文化课笔记",
+        "gain": {
+          "school": 5.0,
+          "mood": -3.0
+        }
+      },
+      {
+        "name": "和老师约一个补课计划",
+        "gain": {
+          "school": 2.0,
+          "mood": 2.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "story-7",
+    "choices": [
+      {
+        "name": "认真收下，约好保持联系",
+        "gain": {
+          "lab": 1.0,
+          "mood": 2.0
+        }
+      },
+      {
+        "name": "送他一本写满批注的笔记",
+        "gain": {
+          "popularity": 1.0,
+          "mood": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "challenge-mechanics",
+    "choices": [
+      {
+        "name": "独立攻克难题",
+        "gain": {
+          "mechanics": 2.0,
+          "mood": -2.0
+        }
+      },
+      {
+        "name": "暂时放弃，记入错题本",
+        "gain": {
+          "mood": -3.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "challenge-electro",
+    "choices": [
+      {
+        "name": "独立攻克难题",
+        "gain": {
+          "electro": 2.0,
+          "mood": -2.0
+        }
+      },
+      {
+        "name": "暂时放弃，记入错题本",
+        "gain": {
+          "mood": -3.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "challenge-thermal",
+    "choices": [
+      {
+        "name": "独立攻克难题",
+        "gain": {
+          "thermal": 2.0,
+          "mood": -2.0
+        }
+      },
+      {
+        "name": "暂时放弃，记入错题本",
+        "gain": {
+          "mood": -3.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "challenge-optics",
+    "choices": [
+      {
+        "name": "独立攻克难题",
+        "gain": {
+          "optics": 2.0,
+          "mood": -2.0
+        }
+      },
+      {
+        "name": "暂时放弃，记入错题本",
+        "gain": {
+          "mood": -3.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "challenge-modern",
+    "choices": [
+      {
+        "name": "独立攻克难题",
+        "gain": {
+          "modern": 2.0,
+          "mood": -2.0
+        }
+      },
+      {
+        "name": "暂时放弃，记入错题本",
+        "gain": {
+          "mood": -3.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "challenge-lab",
+    "choices": [
+      {
+        "name": "独立攻克难题",
+        "gain": {
+          "lab": 2.0,
+          "mood": -2.0
+        }
+      },
+      {
+        "name": "暂时放弃，记入错题本",
+        "gain": {
+          "mood": -3.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "romance-start",
+    "choices": [
+      {
+        "name": "接受告白，一起走下去",
+        "gain": {
+          "mood": 8.0
+        }
+      },
+      {
+        "name": "温柔拒绝，先专注自己的路",
+        "gain": {
+          "mood": 2.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "romance-date",
+    "choices": [
+      {
+        "name": "好好倾听彼此",
+        "gain": {
+          "mood": 10.0,
+          "mechanics": -1.0,
+          "electro": -1.0,
+          "thermal": -1.0,
+          "optics": -1.0,
+          "modern": -1.0,
+          "lab": -1.0,
+          "school": -1.0
+        }
+      },
+      {
+        "name": "一起整理课堂笔记",
+        "gain": {
+          "school": 1.0,
+          "mood": 2.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "romance-breakup",
+    "choices": [
+      {
+        "name": "接受告别，找朋友聊聊",
+        "gain": {
+          "mood": -10.0
+        }
+      },
+      {
+        "name": "化悲愤为力量",
+        "gain": {
+          "mood": -5.0,
+          "mechanics": 1.0,
+          "electro": 1.0,
+          "thermal": 1.0,
+          "optics": 1.0,
+          "modern": 1.0,
+          "lab": 1.0,
+          "school": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "id": "jiahao-special",
+    "choices": [
+      {
+        "name": "自在极意，沉浸推导",
+        "gain": {
+          "mechanics": 2.0,
+          "mood": 3.0
+        }
+      },
+      {
+        "name": "分享自己的奇妙解法",
+        "gain": {
+          "popularity": 2.0,
+          "mood": 4.0
+        }
+      }
+    ]
+  }
+]

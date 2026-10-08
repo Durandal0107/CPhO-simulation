@@ -33,6 +33,8 @@ function validYears(s){
 }
 
 function validAttributeRules(s){
+ if(s.balanceVersion!==undefined&&s.balanceVersion!==2)return false;
+ if(s.balanceVersion===2&&s.calibration&&s.calibration.balanceVersion!==2)return false;
  if(s.attributeRulesVersion!==undefined&&s.attributeRulesVersion!==1)return false;
  if(s.attributeRulesVersion===1&&s.calibration&&s.calibration.attributeRulesVersion!==1)return false;
  if(s.examNotice!==undefined&&(!Number.isInteger(s.examNotice)||s.examNotice<0||s.examNotice>=s.medals.length))return false;

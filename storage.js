@@ -37,6 +37,7 @@ function validYears(s){
 }
 
 function validAttributeRules(s){
+ if(!validIndependentPools(s))return false;
  if(s.masterProbability!==undefined&&![.2,.4].includes(s.masterProbability))return false;
  if(s.lostProbability!==undefined&&![.1,.15].includes(s.lostProbability))return false;
  if(s.crashVersion!==undefined&&s.crashVersion!==2)return false;
@@ -52,4 +53,25 @@ function validAttributeRules(s){
  if(s.attributeRulesVersion===1&&s.calibration&&s.calibration.attributeRulesVersion!==1)return false;
  if(s.examNotice!==undefined&&(!Number.isInteger(s.examNotice)||s.examNotice<0||s.examNotice>=s.medals.length))return false;
  return s.activityNotices===undefined||(Array.isArray(s.activityNotices)&&s.activityNotices.length<=9&&s.activityNotices.every(n=>n&&actions.some(a=>a.id===n.actionId)&&Number.isInteger(n.sequence)&&n.sequence>=1&&n.sequence<=9&&n.week===s.week&&['success','failure'].includes(n.judgement)&&Number.isFinite(n.moodAtAction)&&n.moodAtAction>=0&&n.moodAtAction<=100&&(n.judgement==='failure'?n.moodAtAction<25:n.moodAtAction>75)&&n.gain&&Object.entries(n.gain).every(([k,v])=>keys.includes(k)&&Number.isFinite(v))));
+}
+
+function validIndependentPools(s){
+ if(s.independentPoolsVersion===undefined)return s.calibration?.independentPoolsVersion===undefined;
+ const report=s.calibration;
+ if(s.independentPoolsVersion!==1||s.cutoffRulesVersion!==2||report?.independentPoolsVersion!==1||report.competitionCount!==totalDays(s)/12*3||report.totalSimulations!==report.competitionCount*10000||!Array.isArray(report.years))return false;
+ if(!['初三','高一','高二'].every((g,i)=>report.initialLearningRounds?.[g]===[0,12,24][i]))return false;
+ const seeds=[];
+ const valid=report.years.every(year=>['preliminary','semifinal','final'].every((key,i)=>{
+  const pool=year.stages?.[key];if(!pool||pool.sampleSize!==10000||pool.startDay!==year.startDay||pool.examDay!==year.startDay+[8,10,12][i]-1||!Number.isInteger(pool.poolSeed)||pool.poolSeed<0||pool.poolSeed>4294967295)return false;
+  seeds.push(pool.poolSeed);
+  if(!['初三','高一','高二'].every(g=>pool.cohorts?.[g]===report.cohorts?.[g]))return false;
+  if(!Number.isInteger(pool.actualPreExams)||pool.actualPreExams<1||pool.actualPreExams>10000||pool.semifinalists!==Math.ceil(pool.actualPreExams*.1))return false;
+  if(i>=1&&(!Number.isInteger(pool.actualSemiExams)||pool.actualSemiExams<1||pool.actualSemiExams>pool.semifinalists||pool.finalists!==Math.ceil(pool.actualSemiExams*.1)))return false;
+  if(i===2&&(!Number.isInteger(pool.actualFinalExams)||pool.actualFinalExams<1||pool.actualFinalExams>pool.finalists))return false;
+  const cutoffKeys=i===0?['preliminary']:i===1?['preliminary','semifinal']:['preliminary','semifinal','training','gold','silver'];
+  if(!cutoffKeys.every(k=>Number.isFinite(pool.cutoffs?.[k])&&pool.cutoffs[k]>=0&&pool.cutoffs[k]<=(k==='preliminary'?320:400)))return false;
+  const sharedKeys=i===0?['preliminary']:i===1?['semifinal']:['training','gold','silver'];
+  return sharedKeys.every(k=>pool.cutoffs[k]===year.cutoffs[k]);
+ }));
+ return valid&&new Set(seeds).size===report.competitionCount;
 }

@@ -3,6 +3,7 @@ import {identities} from './identities.js';
 import {seededRandom} from './random.js';
 export const calibrationSettings=player=>({sampleSize:player.cutoffRulesVersion===2?10000:1000,qualificationRatio:player.cutoffRulesVersion===2 ? .1 : .2});
 export function calibrateRun(player,onProgress=()=>{}){
+ if(player.calendarVersion===3&&player.independentPoolsVersion===1)return calibrateIndependentGrades(player,onProgress);
  if(player.calendarVersion===3)return calibrateGrades(player,onProgress);
  const {sampleSize,qualificationRatio}=calibrationSettings(player);
  const random=seededRandom((player.worldSeed^0xa3c59ac3)>>>0);
@@ -39,7 +40,7 @@ export function calibrateRun(player,onProgress=()=>{}){
  return {sampleSize,qualificationRatio,...(player.cutoffRulesVersion===2?{cutoffRulesVersion:2}:{}),worldSeed:player.worldSeed,semifinalists:semifinalists.length,finalists:finalists.length,actualPreExams:eligible(runs,'pre').length,actualSemiExams:eligible(semifinalists,'semi').length,actualFinalExams:eligible(finalists,'final').length,cutoffs};
 }
 export function createCalibratedGame({name,talents,identity,seed},onProgress){
- const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2});
+ const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2,independentPoolsVersion:1});
  state.worldSeed=seed>>>0;state.eventPlan=createEventPlan(state,state.worldSeed);
  state.calibration=calibrateRun(state,onProgress);
  state.runCutoffs=state.calibration.cutoffs;
@@ -53,6 +54,74 @@ function randomPlan(state,random){
  while(remaining>0){let available=actions.filter(a=>a.cost<=remaining);if(state.balanceVersion===2){if(state.stats.mood<35)available=available.filter(a=>a.id==='rest');else if(state.stats.school<40)available=available.filter(a=>a.id==='school');}const action=available[Math.floor(random()*available.length)];plan.push(action.id);remaining-=action.cost;}
  return plan;
 }
+
+function calibrateCompetition(player,startDay,stageIndex,onProgress){
+ const {sampleSize,qualificationRatio}=calibrationSettings(player);
+ const cohorts={初三:sampleSize*.45,高一:sampleSize*.35,高二:sampleSize*.2};
+ const poolSeed=(player.worldSeed^Math.imul(startDay,0x85ebca6b)^Math.imul(stageIndex+1,0xc2b2ae35))>>>0;
+ // Each call owns a fresh population. No statistics, relationships or buffs cross pools.
+ const runs=Array.from({length:sampleSize},(_,id)=>{
+  const random=seededRandom((poolSeed^Math.imul(id+1,0x9e3779b1))>>>0);
+  const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion,balanceVersion:player.balanceVersion,jiahaoVersion:player.jiahaoVersion});
+  state.talents=[];state.dailyPenalty=0;state.calendarPrep=prepDays(player);
+  const priorRounds=id<cohorts.初三?0:id<cohorts.初三+cohorts.高一?12:24;
+  for(let day=0;day<priorRounds&&!state.ended;day++){
+   for(const action of randomPlan(state,random)){performAction(state,action,random,1,false);if(state.ended)break;}
+   if(!state.ended)settleDailyStats(state);
+   state.log=[];
+  }
+  state.week=startDay;state.eventPlan=player.eventPlan;state.log=[];
+  return {id,state,random,pre:null,semi:null,final:null};
+ });
+ const eligible=(list,key)=>list.filter(r=>r[key]!==null);
+ const top=(list,key,ratio)=>{const candidates=eligible(list,key);return candidates.sort((a,b)=>b[key]-a[key]||a.id-b.id).slice(0,Math.ceil(candidates.length*ratio));};
+ const threshold=(list,key,ratio)=>top(list,key,ratio).at(-1)?.[key]??null;
+ function simulate(run,round){
+  const {state,random}=run;
+  while(!state.ended&&state.week<=startDay+round-1){
+   state.route=true;
+   const result=advance(state,randomPlan(state,random),random,{deferQualification:true});
+   if(result)run[result.stage==='预赛'?'pre':result.stage==='复赛'?'semi':'final']=result.score;
+   if(state.pending){const available=state.pending.choices.map((c,i)=>canChoose(state,c)?i:null).filter(i=>i!==null);choose(state,available[Math.floor(random()*available.length)],random);}
+   state.log=[];
+  }
+ }
+ runs.forEach((run,i)=>{simulate(run,8);if((i+1)%100===0)onProgress((i+1)/sampleSize*.8);});
+ const semifinalists=top(runs,'pre',qualificationRatio);
+ const report={poolSeed,startDay,examDay:startDay+[8,10,12][stageIndex]-1,sampleSize,cohorts,actualPreExams:eligible(runs,'pre').length,semifinalists:semifinalists.length,cutoffs:{preliminary:threshold(runs,'pre',qualificationRatio)}};
+ if(stageIndex>=1){
+  semifinalists.forEach((run,i)=>{simulate(run,10);if((i+1)%50===0)onProgress(.8+(i+1)/semifinalists.length*.15);});
+  const finalists=top(semifinalists,'semi',qualificationRatio);
+  Object.assign(report,{actualSemiExams:eligible(semifinalists,'semi').length,finalists:finalists.length});
+  report.cutoffs.semifinal=threshold(semifinalists,'semi',qualificationRatio);
+  if(stageIndex===2){
+   finalists.forEach(run=>simulate(run,12));
+   report.actualFinalExams=eligible(finalists,'final').length;
+   Object.assign(report.cutoffs,{training:threshold(finalists,'final',.1),gold:threshold(finalists,'final',.3),silver:threshold(finalists,'final',.7)});
+  }
+ }
+ if(Object.values(report.cutoffs).some(v=>v===null))throw Error(`${gradeName({...player,week:startDay})}本局事件日程下没有足够角色完成考试，请重新开局。`);
+ onProgress(1);return report;
+}
+
+function calibrateIndependentGrades(player,onProgress){
+ const {sampleSize,qualificationRatio}=calibrationSettings(player),years=[];
+ const competitionCount=totalDays(player)/12*3;
+ for(let startDay=1;startDay<=totalDays(player);startDay+=12){
+  const stages={};
+  for(const [stageIndex,key]of ['preliminary','semifinal','final'].entries()){
+   const completed=years.length*3+stageIndex;
+   stages[key]=calibrateCompetition(player,startDay,stageIndex,progress=>onProgress(Math.floor((completed+progress)/competitionCount*100)));
+  }
+  const {preliminary,semifinal,final}=stages;
+  years.push({grade:gradeName({...player,week:startDay}),startDay,sampleSize,cohorts:{...preliminary.cohorts},stages,
+   actualPreExams:preliminary.actualPreExams,semifinalists:preliminary.semifinalists,actualSemiExams:semifinal.actualSemiExams,finalists:semifinal.finalists,actualFinalExams:final.actualFinalExams,
+   cutoffs:{preliminary:preliminary.cutoffs.preliminary,semifinal:semifinal.cutoffs.semifinal,training:final.cutoffs.training,gold:final.cutoffs.gold,silver:final.cutoffs.silver}});
+ }
+ return {sampleSize,qualificationRatio,cutoffRulesVersion:player.cutoffRulesVersion,independentPoolsVersion:1,competitionCount,totalSimulations:competitionCount*sampleSize,initialLearningRounds:{初三:0,高一:12,高二:24},
+  worldSeed:player.worldSeed,...(player.jiahaoVersion===1?{jiahaoVersion:1}:{}),...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion===1?{attributeRulesVersion:1}:{}),cohorts:years[0].cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
+}
+
 function calibrateGrades(player,onProgress){
  const {sampleSize,qualificationRatio}=calibrationSettings(player);
  const cohorts={初三:sampleSize*.45,高一:sampleSize*.35,高二:sampleSize*.2};

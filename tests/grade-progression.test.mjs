@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createGame,advance,choose,totalDays,gradeName,gradeRound,examDay,examThreshold,checkElimination,theoryKeys} from '../game.js';
-import {createCalibratedGame} from '../calibration.js';
+import {createCalibratedGame,calibrateRun} from '../calibration.js';
 import {validSave,migrateSave} from '../storage.js';
 const make=(headstart=false)=>createGame('年级测试',['grinder','lost',...(headstart?['headstart']:[])],()=>.9,'ordinary',{calendarVersion:3});
 const settle=s=>{if(s.pending)choose(s,1,()=>.9);};
@@ -26,10 +26,33 @@ test('完整三年赛程九次考试，最后一天事件处理后结束',()=>{
  const s=make();const days=[];while(!s.ended){Object.assign(s.stats,{mechanics:100,electro:100,thermal:100,optics:100,modern:100,lab:100,mood:100});const day=s.week;const r=advance(s,['rest'],()=>.5);if(r)days.push(day);if(day===36)assert.equal(s.ended,false);settle(s);}
  assert.deepEqual(days,[8,10,12,20,22,24,32,34,36]);assert.deepEqual(s.medals.map(m=>m.grade),['初三','初三','初三','高一','高一','高一','高二','高二','高二']);
 });
-test('每年独立校准混合10000人，当前年级使用自己的分数线，续存不变',()=>{
+test('每场重建混合10000人，独立随机池保留年级构成和对应分数线，续存不变',()=>{
  const s=createCalibratedGame({name:'校准',talents:['grinder','lost','headstart'],identity:'ordinary',seed:42});
  assert.equal(s.eventPlan.length,48);assert.deepEqual(s.calibration.cohorts,{初三:4500,高一:3500,高二:2000});assert.equal(s.calibration.years.length,4);
- for(let i=0;i<4;i++){s.week=i*12+8;assert.equal(examThreshold(s,8),s.yearCutoffs[i].preliminary);assert.ok(s.calibration.years[i].actualFinalExams>0);}
+ assert.equal(s.independentPoolsVersion,1);assert.equal(s.calibration.competitionCount,12);assert.equal(s.calibration.totalSimulations,120000);
+ const seeds=[];
+ for(let i=0;i<4;i++){
+  const year=s.calibration.years[i];s.week=i*12+8;assert.equal(examThreshold(s,8),s.yearCutoffs[i].preliminary);assert.ok(year.actualFinalExams>0);
+  for(const [j,key]of ['preliminary','semifinal','final'].entries()){
+   const pool=year.stages[key];assert.equal(pool.sampleSize,10000);assert.deepEqual(pool.cohorts,{初三:4500,高一:3500,高二:2000});assert.equal(pool.examDay,i*12+[8,10,12][j]);seeds.push(pool.poolSeed);
+   assert.equal(pool.semifinalists,Math.ceil(pool.actualPreExams*.1));
+   if(j>=1)assert.equal(pool.finalists,Math.ceil(pool.actualSemiExams*.1));
+  }
+  assert.equal(year.cutoffs.preliminary,year.stages.preliminary.cutoffs.preliminary);assert.equal(year.cutoffs.semifinal,year.stages.semifinal.cutoffs.semifinal);assert.equal(year.cutoffs.gold,year.stages.final.cutoffs.gold);
+ }
+ assert.equal(new Set(seeds).size,12);
  assert.notDeepEqual(s.yearCutoffs[0],s.yearCutoffs[3]);assert.ok(validSave(s));assert.deepEqual(migrateSave(s),s);
- for(const mutate of [t=>t.yearCutoffs.pop(),t=>t.yearCutoffs[2].gold=-1,t=>t.calibration.cohorts.高二=201]){const bad=JSON.parse(JSON.stringify(s));mutate(bad);assert.equal(validSave(bad),false);}
+ for(const mutate of [t=>t.yearCutoffs.pop(),t=>t.yearCutoffs[2].gold=-1,t=>t.calibration.cohorts.高二=201,t=>delete t.calibration.independentPoolsVersion,t=>t.calibration.years[1].stages.semifinal.sampleSize=1000,t=>t.calibration.years[1].stages.semifinal.cohorts.初三=4499,t=>t.calibration.years[1].stages.final.poolSeed=t.calibration.years[1].stages.semifinal.poolSeed]){const bad=JSON.parse(JSON.stringify(s));mutate(bad);assert.equal(validSave(bad),false);}
+});
+
+test('前一年属性与关系变化不能传到下一年的任何校准池',()=>{
+ const s=createCalibratedGame({name:'隔离校准',talents:['grinder','lost'],identity:'ordinary',seed:42});
+ const altered=JSON.parse(JSON.stringify(s));
+ for(const slot of altered.eventPlan.slice(0,12))for(const event of [slot.primary,slot.fallback])for(const choice of event.choices){
+  choice.gain={mechanics:100,electro:100,thermal:100,optics:100,modern:100,lab:100,school:100,mood:100};choice.relationship=true;delete choice.requires;
+ }
+ const originalSchedule=JSON.stringify(altered.eventPlan);const changed=calibrateRun(altered);
+ assert.notDeepEqual(changed.years[0].cutoffs,s.calibration.years[0].cutoffs);
+ assert.deepEqual(changed.years.slice(1),s.calibration.years.slice(1));
+ assert.equal(JSON.stringify(altered.eventPlan),originalSchedule);
 });

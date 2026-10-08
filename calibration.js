@@ -1,4 +1,4 @@
-import {createGame,createEventPlan,advance,choose,budget,actions,canChoose,competitionDay,prepDays,totalDays,gradeRound,gradeName,performAction,settleDailyStats} from './game.js';
+import {createGame,createEventPlan,advance,choose,budget,actions,canChoose,competitionDay,prepDays,totalDays,gradeRound,gradeName,performAction,settleDailyStats,settleExamMood} from './game.js';
 import {identities} from './identities.js';
 import {seededRandom} from './random.js';
 import {referenceProfile,referenceGoal,referencePlan,referenceChoice} from './reference-policy.js';
@@ -41,7 +41,7 @@ export function calibrateRun(player,onProgress=()=>{}){
  return {sampleSize,qualificationRatio,...(player.cutoffRulesVersion===2?{cutoffRulesVersion:2}:{}),worldSeed:player.worldSeed,semifinalists:semifinalists.length,finalists:finalists.length,actualPreExams:eligible(runs,'pre').length,actualSemiExams:eligible(semifinalists,'semi').length,actualFinalExams:eligible(finalists,'final').length,cutoffs};
 }
 export function createCalibratedGame({name,talents,identity,seed},onProgress){
- const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2,independentPoolsVersion:1,referencePolicyVersion:1});
+ const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2,independentPoolsVersion:1,referencePolicyVersion:1,examMoodVersion:1});
  state.worldSeed=seed>>>0;state.eventPlan=createEventPlan(state,state.worldSeed);
  state.calibration=calibrateRun(state,onProgress);
  state.runCutoffs=state.calibration.cutoffs;
@@ -56,6 +56,25 @@ function randomPlan(state,random){
  return plan;
 }
 
+function finishCalibrationEvent(run){
+ const {state,random,profile}=run;
+ if(state.pending){const available=state.pending.choices.map((c,i)=>canChoose(state,c)?i:null).filter(i=>i!==null);choose(state,profile?referenceChoice(state,random,referenceGoal(state),profile):available[Math.floor(random()*available.length)],random);}
+ state.log=[];
+}
+
+// Reference pools must rank this exam before applying its mood outcome or choosing its daily event.
+export function settleCalibrationQualification(runs,qualified,key){
+ const winners=new Set(qualified.map(run=>run.id));
+ for(const run of runs){
+  const {state}=run;
+  if(state.examMoodVersion!==1||run[key]===null)continue;
+  const result=state.medals.at(-1);
+  result.pass=winners.has(run.id);result.title=result.pass?(key==='pre'?'晋级复赛':'入选省队'):'未能晋级';state.route=result.pass;
+  settleExamMood(state,result);
+  finishCalibrationEvent(run);
+ }
+}
+
 function calibrateCompetition(player,startDay,stageIndex,onProgress){
  const {sampleSize,qualificationRatio}=calibrationSettings(player);
  const cohorts={初三:sampleSize*.45,高一:sampleSize*.35,高二:sampleSize*.2};
@@ -63,7 +82,7 @@ function calibrateCompetition(player,startDay,stageIndex,onProgress){
  // Each call owns a fresh population. No statistics, relationships or buffs cross pools.
  const runs=Array.from({length:sampleSize},(_,id)=>{
   const random=seededRandom((poolSeed^Math.imul(id+1,0x9e3779b1))>>>0);
-  const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion,balanceVersion:player.balanceVersion,jiahaoVersion:player.jiahaoVersion});
+  const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion,balanceVersion:player.balanceVersion,jiahaoVersion:player.jiahaoVersion,examMoodVersion:player.examMoodVersion});
   state.talents=[];state.dailyPenalty=0;state.calendarPrep=prepDays(player);
   const profile=player.referencePolicyVersion===1?referenceProfile(random):null;
   const priorRounds=id<cohorts.初三?0:id<cohorts.初三+cohorts.高一?12:24;
@@ -85,16 +104,18 @@ function calibrateCompetition(player,startDay,stageIndex,onProgress){
    const goal=referenceGoal(state);
    const result=advance(state,profile?referencePlan(state,random,goal,profile):randomPlan(state,random),random,{deferQualification:true});
    if(result)run[result.stage==='预赛'?'pre':result.stage==='复赛'?'semi':'final']=result.score;
-   if(state.pending){const available=state.pending.choices.map((c,i)=>canChoose(state,c)?i:null).filter(i=>i!==null);choose(state,profile?referenceChoice(state,random,goal,profile):available[Math.floor(random()*available.length)],random);}
-   state.log=[];
+   if(result&&state.examMoodVersion===1&&result.stage!=='全国决赛')break;
+   finishCalibrationEvent(run);
   }
  }
  runs.forEach((run,i)=>{simulate(run,8);if((i+1)%100===0)onProgress((i+1)/sampleSize*.8);});
  const semifinalists=top(runs,'pre',qualificationRatio);
+ settleCalibrationQualification(runs,semifinalists,'pre');
  const report={poolSeed,startDay,examDay:startDay+[8,10,12][stageIndex]-1,sampleSize,cohorts,actualPreExams:eligible(runs,'pre').length,semifinalists:semifinalists.length,cutoffs:{preliminary:threshold(runs,'pre',qualificationRatio)}};
  if(stageIndex>=1){
   semifinalists.forEach((run,i)=>{simulate(run,10);if((i+1)%50===0)onProgress(.8+(i+1)/semifinalists.length*.15);});
   const finalists=top(semifinalists,'semi',qualificationRatio);
+  settleCalibrationQualification(semifinalists,finalists,'semi');
   Object.assign(report,{actualSemiExams:eligible(semifinalists,'semi').length,finalists:finalists.length});
   report.cutoffs.semifinal=threshold(semifinalists,'semi',qualificationRatio);
   if(stageIndex===2){
@@ -121,7 +142,7 @@ function calibrateIndependentGrades(player,onProgress){
    actualPreExams:preliminary.actualPreExams,semifinalists:preliminary.semifinalists,actualSemiExams:semifinal.actualSemiExams,finalists:semifinal.finalists,actualFinalExams:final.actualFinalExams,
    cutoffs:{preliminary:preliminary.cutoffs.preliminary,semifinal:semifinal.cutoffs.semifinal,training:final.cutoffs.training,gold:final.cutoffs.gold,silver:final.cutoffs.silver}});
  }
- return {sampleSize,qualificationRatio,cutoffRulesVersion:player.cutoffRulesVersion,independentPoolsVersion:1,...(player.referencePolicyVersion===1?{referencePolicyVersion:1}:{}),competitionCount,totalSimulations:competitionCount*sampleSize,initialLearningRounds:{初三:0,高一:12,高二:24},
+ return {sampleSize,qualificationRatio,cutoffRulesVersion:player.cutoffRulesVersion,independentPoolsVersion:1,...(player.referencePolicyVersion===1?{referencePolicyVersion:1}:{}),...(player.examMoodVersion===1?{examMoodVersion:1}:{}),competitionCount,totalSimulations:competitionCount*sampleSize,initialLearningRounds:{初三:0,高一:12,高二:24},
   worldSeed:player.worldSeed,...(player.jiahaoVersion===1?{jiahaoVersion:1}:{}),...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion===1?{attributeRulesVersion:1}:{}),cohorts:years[0].cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
 }
 

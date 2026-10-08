@@ -105,6 +105,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  if(options.cutoffRulesVersion===2)state.cutoffRulesVersion=2;
  if(options.independentPoolsVersion===1)state.independentPoolsVersion=1;
  if(options.referencePolicyVersion===1)state.referencePolicyVersion=1;
+ if(options.examMoodVersion===1)state.examMoodVersion=1;
  if(selected.includes('allin'))state.allinMultiplier=1.5;
  if(selected.includes('crash'))state.crashVersion=2;
  if(selected.includes('lost'))state.lostProbability=.15;
@@ -175,7 +176,7 @@ export function budget(state){return (state.talents.includes('discipline')||stat
 export function examThreshold(state,day){const active=state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs;const base=state.version===1?(day===8?35:day===16?62:82):(day===8?active.preliminary:day===16?active.semifinal:active.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
 export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):(state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs)[award];}
 export function moodPerformance(mood){return .75+.25*clamp(mood)/100;}
-export function exam(state,random=Math.random){
+export function exam(state,random=Math.random,options={}){
  const s=state.stats,day=examDay(state);
  let maxScore,score;
  if(state.version===1){maxScore=100;const base=theoryKeys.reduce((sum,key)=>sum+s[key],0)/theoryKeys.length*.72+s.lab*.28;score=Math.round(clamp(base*(.75+s.mood/400)+(random()-.5)*(state.talents.includes('calm')?8:18)));}
@@ -198,7 +199,18 @@ export function exam(state,random=Math.random){
  const training=day===24&&score>=awardThreshold(state,'training');
  const cutoffsAtExam=day===24?{training:awardThreshold(state,'training'),gold:threshold,silver:awardThreshold(state,'silver')}:{[day===8?'preliminary':'semifinal']:threshold};
  const result={stage,...(state.calendarVersion===3?{grade:gradeName(state),week:state.week}:{}),score,scoreBeforePenalty,...(state.masterVersion===2&&state.talents.includes('master')?{scoreBeforeBonus,masterBonus}:{}),cutoffsAtExam,cutoffMultiplier:state.identity==='elite'&&day!==24?1.3:1,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
- state.medals.push(result);if(!pass&&day!==24)state.route=false;return result;
+ state.medals.push(result);if(!pass&&day!==24)state.route=false;
+ if(!options.deferQualification)settleExamMood(state,result);
+ return result;
+}
+export function settleExamMood(state,result){
+ if(state.examMoodVersion!==1||!['预赛','复赛'].includes(result.stage)||result.moodAfterExam!==undefined)return;
+ const effect=result.stage==='预赛'?(result.pass?10:-20):(result.pass?20:-30);
+ result.moodEffect=effect;
+ state.stats.mood=clamp(state.stats.mood+effect);
+ result.moodAfterExam=state.stats.mood;
+ state.log.unshift({week:state.week,text:`${result.stage}${result.pass?'晋级':'未晋级'}：心态 ${effect>=0?'+':''}${effect}（${formatStat(result.moodAtExam)} → ${formatStat(result.moodAfterExam)}）。`});
+ checkGameOver(state);
 }
 export function rollActivityJudgement(state,random=Math.random){
  if(state.attributeRulesVersion!==1)return null;
@@ -246,7 +258,7 @@ export function advance(state,plan,random=Math.random,options={}){
   if(state.romanceCooldown>0)state.romanceCooldown--;
   state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')+(state.version===2?'（行动结算：'+Object.entries(changes).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+')':'')});
   let result=null;
-  if([8,16,24].includes(examDay(state))&&state.route){result=exam(state,random);state.log.unshift({week:state.week,text:`${result.grade?result.grade+' · ':''}${result.stage}：${result.score} 分，${result.title}。`});if(!result.pass&&examDay(state)!==24&&!options.deferQualification){if(checkElimination(state))return result;}}
+  if([8,16,24].includes(examDay(state))&&state.route){result=exam(state,random,options);state.log.unshift({week:state.week,text:`${result.grade?result.grade+' · ':''}${result.stage}：${result.score} 分，${result.title}。`});if(state.ended)return result;if(!result.pass&&examDay(state)!==24&&!options.deferQualification){if(checkElimination(state))return result;}}
   if(state.talents.includes('wealthy')&&state.week%7===0){state.stats.wealth*=2;state.stats.popularity=clamp(state.stats.popularity+1);state.log.unshift({week:state.week,text:'家财万贯：财富翻倍，人缘 +1。'});}
   state.pending=dailyEvent(state,random);
   state.lastEvent=state.pending.id;

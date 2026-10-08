@@ -37,6 +37,8 @@ function validYears(s){
 }
 
 function validAttributeRules(s){
+ if(s.examMoodVersion!==undefined&&s.examMoodVersion!==1)return false;
+ if(s.calibration&&s.examMoodVersion!==s.calibration.examMoodVersion)return false;
  if(s.referencePolicyVersion!==undefined&&s.referencePolicyVersion!==1)return false;
  if(s.referencePolicyVersion!==s.calibration?.referencePolicyVersion)return false;
  if(!validIndependentPools(s))return false;
@@ -80,6 +82,10 @@ function validIndependentPools(s){
 }
 
 function validExamRecord(r){
+ if(r.moodEffect!==undefined||r.moodAfterExam!==undefined){
+  const expected=r.stage==='预赛'?(r.pass?10:-20):r.stage==='复赛'?(r.pass?20:-30):null;
+  if(expected===null||r.moodEffect!==expected||!Number.isFinite(r.moodAtExam)||r.moodAtExam<0||r.moodAtExam>100||r.moodAfterExam!==Math.max(0,Math.min(100,r.moodAtExam+expected)))return false;
+ }
  if(r.scoreBeforePenalty!==undefined&&(!Number.isInteger(r.scoreBeforePenalty)||r.scoreBeforePenalty<0||r.scoreBeforePenalty>(r.maxScore||100)||!Number.isInteger(r.penalty)||r.penalty<0||r.score!==Math.max(0,r.scoreBeforePenalty-r.penalty)))return false;
  if(r.masterBonus!==undefined||r.scoreBeforeBonus!==undefined){
   const expected=r.stage==='复赛'?r.cutoffsAtExam?.semifinal/3:r.stage==='全国决赛'?r.cutoffsAtExam?.training/4:0;

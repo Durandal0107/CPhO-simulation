@@ -4,7 +4,10 @@ export const actions=[{id:'mechanics',icon:'↗',name:'力学专题',desc:'从�
 const statLabels={mechanics:'力学',electro:'电磁学',thermal:'热光',lab:'实验',school:'文化课',mood:'心态'};
 export const formatStat=value=>Number(value.toFixed(2)).toString();
 for(const action of actions){
-  for(const key of Object.keys(action.gain))action.gain[key]/=key==='mood'?2:3;
+  for(const key of Object.keys(action.gain)){
+    if(key==='mood')action.gain[key]=action.id==='rest'?2:action.gain[key];
+    else action.gain[key]/=3;
+  }
   action.hint=Object.entries(action.gain).map(([key,value])=>`${statLabels[key]} ${value<0?'−':'+'}${formatStat(Math.abs(value))}`).join(' · ');
 }
 export const events=[{title:'第一道解不出的题',text:'晚自习结束了，黑板上的圆环还在转动。你算了三页纸，答案却始终多一个负号。同桌收拾好书包，问你要不要一起去问教练。',choices:[{name:'带着草稿去请教',result:'教练没有给答案，只问：“你选的参考系是什么？”你忽然看到了问题的入口。',gain:{mechanics:5,mood:2}},{name:'再独立想一会儿',result:'你重新画图，终于发现约束条件。走出教室时，走廊已经熄灯。',gain:{mechanics:7,mood:-5}}]},{title:'一封来自家里的消息',text:'手机亮了。妈妈问：“最近睡得好吗？不一定每次都要赢。”桌上的习题集摊开着，旁边是还没吃的晚饭。',choices:[{name:'打个电话，聊聊近况',result:'你们没有谈分数。挂电话后，晚饭还是温的。',gain:{mood:10}},{name:'先把这一题做完',result:'你发了一个“放心”，又低下头。今晚的推导格外顺利。',gain:{electro:5,mood:-3}}]},{title:'实验台上的意外',text:'同组同学得到了一条漂亮的直线，你的散点却乱得像星空。距离实验室关门还有二十分钟。',choices:[{name:'重新检查仪器零点',result:'原来是游标卡尺的零点误差。你学会了先相信记录，再质疑仪器。',gain:{lab:7}},{name:'和同学一起讨论数据',result:'你们比较了测量步骤，发现固定装置松动了。合作有时比独自坚持更有效。',gain:{lab:4,mood:5}}]},{title:'排名表背后的名字',text:'模拟考排名贴在门口。那个总和你讨论题目的朋友，这次排在你前面。你看着分数，心里有一点酸。',choices:[{name:'约他交换错题',result:'他的解法和你完全不同。你们在同一张纸上，画出了两条抵达答案的路。',gain:{thermal:5,mood:4}},{name:'把目标写在笔记本上',result:'你把不甘心变成了计划，也提醒自己：对手并不是敌人。',gain:{mechanics:5,mood:-2}}]}];

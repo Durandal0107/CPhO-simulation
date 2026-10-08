@@ -1,6 +1,6 @@
 export const talents=[
  {key:'grinder',group:'positive',name:'！？卷卷？！',desc:'吓哭了。',effect:'每回合行动点 +1'},
- {key:'master',group:'positive',name:'大手',desc:'？？的天还是黑了。',effect:'复赛有20%概率无视分数直接晋级'},
+ {key:'master',group:'positive',name:'大手',desc:'？？的天还是黑了。',effect:'复赛有40%概率无视分数直接晋级'},
  {key:'wealthy',group:'positive',name:'家财万贯',desc:'我去，？✌',effect:'每7天财富翻倍、人缘 +1（初始财富100）'},
  {key:'headstart',group:'neutral',name:'赢在起跑线',desc:'？！低龄化！？',effect:'初始回合数增加12；额外回合数值加成−30%，原有回合数值加成−10%'},
  {key:'jiahao',group:'neutral',name:'天生嘉豪',desc:'自在极意豪。',effect:'心态消耗−20%，初始人缘−2；每天10%专属事件机会（独有时刻／暴雨）；告白可挑战权威，随后5回合正收益×2'},

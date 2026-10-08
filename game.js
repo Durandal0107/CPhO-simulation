@@ -106,6 +106,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  if(selected.includes('allin'))state.allinMultiplier=1.5;
  if(selected.includes('crash'))state.crashVersion=2;
  if(selected.includes('lost'))state.lostProbability=.15;
+ if(selected.includes('master'))state.masterProbability=.4;
  if(options.jiahaoVersion===1)state.jiahaoVersion=1;
  if(options.balanceVersion===2)state.balanceVersion=2;
  if(options.calendarVersion===3)state.calendarVersion=3;
@@ -184,7 +185,7 @@ export function exam(state,random=Math.random){
   score=Math.round(maxScore*weighted*moodPerformance(s.mood));
  }
  let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=state.crashVersion===2?(roll<.05?120:roll<.15?80:roll<.3?60:roll<.5?40:roll<.75?20:0):(roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0);score=Math.max(0,score-penalty);}
- const gifted=day===16&&state.talents.includes('master')&&random()<.2;
+ const gifted=day===16&&state.talents.includes('master')&&random()<(state.masterProbability??.2);
  const stage=day===8?'预赛':day===16?'复赛':'全国决赛';
  const threshold=examThreshold(state,day);
  const pass=gifted||score>=threshold;

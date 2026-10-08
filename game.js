@@ -1,3 +1,4 @@
+import {dayRandom} from './random.js';
 import {cutoffs} from './cutoffs.js';
 import {validIdentity} from './identities.js';
 import {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale} from './talents.js';
@@ -29,7 +30,7 @@ events.push(
 
 export const statNames={wealth:'财富',popularity:'人缘',mechanics:'力学',electro:'电磁学',thermal:'热学',optics:'光学',modern:'近代物理',lab:'实验',school:'文化课',mood:'心态'};
 export function canChoose(state,choice){return Object.entries(choice.requires||{}).every(([key,min])=>state.stats[key]>=min);}
-export function dailyEvent(state,random=Math.random){
+export function randomEvent(state,random=Math.random){
   if(state.talents.includes('jiahao')&&random()<.1)return {id:'jiahao-special',day:state.week,title:'嘉豪的独有时刻',text:'同学们又在讨论排名，你却突然进入了自己的节奏。今天，要把这份专注用在哪里？',choices:[{name:'自在极意，沉浸推导',result:'你暂时忘记比较，在一道推导中找回了节奏。',gain:{mechanics:4,mood:3}},{name:'分享自己的奇妙解法',result:'你把思路讲给身边的人，收获了意外的共鸣。',gain:{popularity:2,mood:4}}]};
   const pool=events.map((e,i)=>({...e,id:`story-${i}`}));
   for(const key of physicalKeys){
@@ -44,6 +45,30 @@ export function dailyEvent(state,random=Math.random){
   const candidates=pool.filter(e=>e.id!==state.lastEvent);
   const event=candidates[Math.min(candidates.length-1,Math.floor(random()*candidates.length))];
   return {...event,day:state.week};
+}
+
+export function dailyEvent(state,random=Math.random){
+ const slot=state.eventPlan?.[state.week-1];
+ if(!slot)return randomEvent(state,random);
+ const ready=slot.condition==='single'?(!state.relationship&&(state.romanceCooldown||0)===0):slot.condition==='dating'?state.relationship:slot.condition==='breakup'?(state.relationship&&state.week-(state.relationshipSince||1)>=3):true;
+ return JSON.parse(JSON.stringify({... (ready?slot.primary:slot.fallback),day:state.week}));
+}
+export function createEventPlan(state,seed){
+ const virtual=JSON.parse(JSON.stringify(state));const plan=[];
+ virtual.eventPlan=null;virtual.relationship=false;virtual.relationshipSince=null;virtual.romanceCooldown=0;
+ for(let day=1;day<=totalDays(state);day++){
+  virtual.week=day;
+  if(virtual.romanceCooldown>0)virtual.romanceCooldown--;
+  let primary=randomEvent(virtual,dayRandom(seed,day,1));
+  const fallbackIndex=Math.floor(dayRandom(seed,day,2)()*events.length);
+  const fallback={...events[fallbackIndex],id:`fallback-story-${fallbackIndex}`,day};
+  if(primary.id===virtual.lastEvent)primary=fallback;
+  const condition=primary.id==='romance-start'?'single':primary.id==='romance-date'?'dating':primary.id==='romance-breakup'?'breakup':null;
+  plan.push({primary,fallback,condition});virtual.lastEvent=primary.id;
+  if(primary.id==='romance-start'){virtual.relationship=true;virtual.relationshipSince=day;}
+  if(primary.id==='romance-breakup'){virtual.relationship=false;virtual.relationshipSince=null;virtual.romanceCooldown=4;}
+ }
+ return JSON.parse(JSON.stringify(plan));
 }
 
 const clamp=x=>Math.max(0,Math.min(100,x));
@@ -101,8 +126,8 @@ export function applyGain(state,gain,learning=false,random=null){
  return actual;
 }
 export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)+(state.identity==='ordinary'?2:0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
-export function examThreshold(state,day){const base=state.version===1?(day===8?35:day===16?62:82):(day===8?cutoffs.preliminary:day===16?cutoffs.semifinal:cutoffs.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
-export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):cutoffs[award];}
+export function examThreshold(state,day){const active=state.runCutoffs||cutoffs;const base=state.version===1?(day===8?35:day===16?62:82):(day===8?active.preliminary:day===16?active.semifinal:active.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
+export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):(state.runCutoffs||cutoffs)[award];}
 export function moodPerformance(mood){return .75+.25*clamp(mood)/100;}
 export function exam(state,random=Math.random){
  const s=state.stats,day=competitionDay(state);

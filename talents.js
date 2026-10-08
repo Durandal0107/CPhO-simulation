@@ -12,7 +12,7 @@ export const talents=[
 export const legacyTalents=[{key:'intuition',name:'物理直觉'},{key:'hands',name:'实验巧手'},{key:'calm',name:'稳如磐石'},{key:'math',name:'数学底子'},{key:'discipline',name:'自律达人'},{key:'optimist',name:'乐天派'}];
 export function validTalents(ids){return Array.isArray(ids)&&new Set(ids).size===ids.length&&ids.every(id=>talents.some(t=>t.key===id))&&['positive','negative'].every(group=>ids.filter(id=>talents.find(t=>t.key===id)?.group===group).length===1);}
 export const talentName=id=>[...talents,...legacyTalents].find(t=>t.key===id)?.name||id;
-export const prepDays=s=>s.talents.includes('headstart')?6:0;
+export const prepDays=s=>s.calendarPrep??(s.talents.includes('headstart')?6:0);
 export const totalDays=s=>24+prepDays(s);
 export const competitionDay=s=>s.week-prepDays(s);
 export const examScale=s=>s.version===2?4:1;

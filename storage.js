@@ -37,6 +37,7 @@ function validYears(s){
 }
 
 function validAttributeRules(s){
+ if(s.lostProbability!==undefined&&![.1,.15].includes(s.lostProbability))return false;
  if(s.crashVersion!==undefined&&s.crashVersion!==2)return false;
  if(s.cutoffRulesVersion!==undefined&&s.cutoffRulesVersion!==2)return false;
  if(s.cutoffRulesVersion===2&&(!s.calibration||s.calibration.cutoffRulesVersion!==2||s.calibration.qualificationRatio!==.1))return false;

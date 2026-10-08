@@ -7,7 +7,7 @@ export const talents=[
  {key:'allin',group:'neutral',name:'破釜沉舟',desc:'我再也不想学文化课了。',effect:'文化课恒定为0，物竞正收益 +50%'},
  {key:'crash',group:'negative',name:'坠机体质',desc:'Man！',effect:'各项正收益 +50%；考试5%扣120、10%扣80、15%扣60、20%扣40、25%扣20分，25%不扣分'},
  {key:'chaos',group:'negative',name:'精神错乱',desc:'？？？',effect:'每项行动的每项数值独立随机附加−5至+3，各有1/9概率'},
- {key:'lost',group:'negative',name:'迷失',desc:'你见过凌晨四点的嚎哭深渊吗？',effect:'每天10%概率沉迷电子世界，当天行动点−2、心态 +5'}
+ {key:'lost',group:'negative',name:'迷失',desc:'你见过凌晨四点的嚎哭深渊吗？',effect:'每天15%概率沉迷电子世界，当天行动点−2、心态 +5'}
 ];
 export const legacyTalents=[{key:'intuition',name:'物理直觉'},{key:'hands',name:'实验巧手'},{key:'calm',name:'稳如磐石'},{key:'math',name:'数学底子'},{key:'discipline',name:'自律达人'},{key:'optimist',name:'乐天派'}];
 export function validTalents(ids){return Array.isArray(ids)&&new Set(ids).size===ids.length&&ids.every(id=>talents.some(t=>t.key===id))&&['positive','negative'].every(group=>ids.filter(id=>talents.find(t=>t.key===id)?.group===group).length===1);}

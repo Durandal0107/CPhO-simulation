@@ -105,6 +105,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  if(options.cutoffRulesVersion===2)state.cutoffRulesVersion=2;
  if(selected.includes('allin'))state.allinMultiplier=1.5;
  if(selected.includes('crash'))state.crashVersion=2;
+ if(selected.includes('lost'))state.lostProbability=.15;
  if(options.jiahaoVersion===1)state.jiahaoVersion=1;
  if(options.balanceVersion===2)state.balanceVersion=2;
  if(options.calendarVersion===3)state.calendarVersion=3;
@@ -118,7 +119,7 @@ export function beginDay(state,random=Math.random){
  if(state.attributeRulesVersion===1)state.activityNotices=[];
  delete state.examNotice;
  state.dailyPenalty=0;
- if(state.talents.includes('lost')&&random()<.1){state.dailyPenalty=2;state.stats.mood=clamp(state.stats.mood+5);state.log.unshift({week:state.week,text:'迷失：沉迷电子世界，今天行动点−2、心态 +5。'});}
+ if(state.talents.includes('lost')&&random()<(state.lostProbability??.1)){state.dailyPenalty=2;state.stats.mood=clamp(state.stats.mood+5);state.log.unshift({week:state.week,text:'迷失：沉迷电子世界，今天行动点−2、心态 +5。'});}
 }
 export const authorityBuffDays=state=>state.authorityBuff&&state.week>=state.authorityBuff.start&&state.week<=state.authorityBuff.end?state.authorityBuff.end-state.week+1:0;
 export function effectiveGain(state,gain,learning=false,random=null,judgement=null){

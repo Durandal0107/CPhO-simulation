@@ -1,3 +1,4 @@
+import {cutoffs} from './cutoffs.js';
 import {validIdentity} from './identities.js';
 import {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale} from './talents.js';
 export {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale};
@@ -94,17 +95,26 @@ export function applyGain(state,gain,learning=false,random=null){
  return actual;
 }
 export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)+(state.identity==='ordinary'?2:0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
-export function examThreshold(state,day){return (day===8?35:day===16?62:82)*examScale(state)*(state.identity==='elite'&&day!==24?1.3:1);}
+export function examThreshold(state,day){const base=state.version===1?(day===8?35:day===16?62:82):(day===8?cutoffs.preliminary:day===16?cutoffs.semifinal:cutoffs.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
+export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):cutoffs[award];}
 export function exam(state,random=Math.random){
- const s=state.stats,day=competitionDay(state),scale=examScale(state);
- const base=theoryKeys.reduce((sum,key)=>sum+s[key],0)/theoryKeys.length*.72+s.lab*.28;
- let score=Math.round(clamp(base*(.75+s.mood/400)+(random()-.5)*(state.talents.includes('calm')?8:18))*scale);
+ const s=state.stats,day=competitionDay(state);
+ let maxScore,score;
+ if(state.version===1){maxScore=100;const base=theoryKeys.reduce((sum,key)=>sum+s[key],0)/theoryKeys.length*.72+s.lab*.28;score=Math.round(clamp(base*(.75+s.mood/400)+(random()-.5)*(state.talents.includes('calm')?8:18)));}
+ else{
+  maxScore=day===8?320:400;
+  const mechanicalShare=.4+random()*.2,thermalShare=.4+random()*.2;
+  const pair=(first,second,share)=>s[first]/100*share+s[second]/100*(1-share);
+  const weighted=pair('mechanics','electro',mechanicalShare)*(day===8?.7:.4)+pair('thermal','optics',thermalShare)*.3+(day===8?0:s.modern/100*.1+s.lab/100*.2);
+  score=Math.round(maxScore*weighted);
+ }
  let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0;score=Math.max(0,score-penalty);}
  const gifted=day===16&&state.talents.includes('master')&&random()<.2;
  const stage=day===8?'预赛':day===16?'复赛':'全国决赛';
  const threshold=examThreshold(state,day);
  const pass=gifted||score>=threshold;
- const result={stage,score,pass,maxScore:100*scale,penalty,gifted,title:day===24?(pass?'国赛金牌':score>=70*scale?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
+ const training=day===24&&score>=awardThreshold(state,'training');
+ const result={stage,score,pass,maxScore,penalty,gifted,training,title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
  state.medals.push(result);if(!pass&&day!==24)state.route=false;return result;
 }
 export function advance(state,plan,random=Math.random){

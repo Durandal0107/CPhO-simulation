@@ -26,12 +26,12 @@ export function calibrateRun(player,onProgress=()=>{}){
  const eligible=(list,key)=>list.filter(r=>r[key]!==null);
  const top=(list,key,ratio)=>{const candidates=eligible(list,key);return candidates.sort((a,b)=>b[key]-a[key]||a.id-b.id).slice(0,Math.ceil(candidates.length*ratio));};
  runs.forEach((r,i)=>{r.pre=simulate(r,8);if((i+1)%100===0)onProgress(Math.round((i+1)*.06));});
- const semifinalists=top(runs,'pre',.3);
+ const semifinalists=top(runs,'pre',.2);
  semifinalists.forEach((r,i)=>{r.semi=simulate(r,16);if((i+1)%50===0)onProgress(60+Math.round((i+1)/semifinalists.length*20));});
- const finalists=top(semifinalists,'semi',.3);
+ const finalists=top(semifinalists,'semi',.2);
  finalists.forEach(r=>{r.final=simulate(r,24);});
  const threshold=(list,key,ratio)=>top(list,key,ratio).at(-1)?.[key]??null;
- const cutoffs={preliminary:threshold(runs,'pre',.3),semifinal:threshold(semifinalists,'semi',.3),training:threshold(finalists,'final',.1),gold:threshold(finalists,'final',.3),silver:threshold(finalists,'final',.7)};
+ const cutoffs={preliminary:threshold(runs,'pre',.2),semifinal:threshold(semifinalists,'semi',.2),training:threshold(finalists,'final',.1),gold:threshold(finalists,'final',.3),silver:threshold(finalists,'final',.7)};
  if(Object.values(cutoffs).some(v=>v===null))throw Error('本局事件日程下，没有足够的存活角色完成全部考试。请重试生成新的一局。');
  onProgress(100);
  return {sampleSize:1000,worldSeed:player.worldSeed,semifinalists:semifinalists.length,finalists:finalists.length,actualPreExams:eligible(runs,'pre').length,actualSemiExams:eligible(semifinalists,'semi').length,actualFinalExams:eligible(finalists,'final').length,cutoffs};
@@ -83,8 +83,8 @@ function calibrateGrades(player,onProgress){
    // Journals are irrelevant to the reference population and costly to retain.
    state.log=[];
   }
-  if(round===8){semifinalists=top(runs,'pre',.3);current.actualPreExams=eligible(runs,'pre').length;current.cutoffs.preliminary=threshold(runs,'pre',.3);}
-  if(round===10){finalists=top(semifinalists,'semi',.3);current.actualSemiExams=eligible(semifinalists,'semi').length;current.cutoffs.semifinal=threshold(semifinalists,'semi',.3);}
+  if(round===8){semifinalists=top(runs,'pre',.2);current.actualPreExams=eligible(runs,'pre').length;current.cutoffs.preliminary=threshold(runs,'pre',.2);}
+  if(round===10){finalists=top(semifinalists,'semi',.2);current.actualSemiExams=eligible(semifinalists,'semi').length;current.cutoffs.semifinal=threshold(semifinalists,'semi',.2);}
   if(round===12){
    current.actualFinalExams=eligible(finalists,'final').length;current.semifinalists=semifinalists.length;current.finalists=finalists.length;
    Object.assign(current.cutoffs,{training:threshold(finalists,'final',.1),gold:threshold(finalists,'final',.3),silver:threshold(finalists,'final',.7)});

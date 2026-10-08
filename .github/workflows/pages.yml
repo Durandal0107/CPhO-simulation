@@ -18,8 +18,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm test
-      - run: npm run build
+      - name: Calibrate 1000 runs, test and build
+        run: npm run build
+      - name: Save calibration evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: calibration-report
+          path: calibration-report.json
+          if-no-files-found: error
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

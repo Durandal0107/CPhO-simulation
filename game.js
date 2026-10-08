@@ -104,6 +104,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  const state={version:legacy?1:2,scienceVersion:2,name:name.trim().slice(0,16)||'陈梓涵',talents:[...selected],identity,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,optics:15,modern:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
  if(options.cutoffRulesVersion===2)state.cutoffRulesVersion=2;
  if(options.independentPoolsVersion===1)state.independentPoolsVersion=1;
+ if(options.referencePolicyVersion===1)state.referencePolicyVersion=1;
  if(selected.includes('allin'))state.allinMultiplier=1.5;
  if(selected.includes('crash'))state.crashVersion=2;
  if(selected.includes('lost'))state.lostProbability=.15;
@@ -185,13 +186,15 @@ export function exam(state,random=Math.random){
   const weighted=pair('mechanics','electro',mechanicalShare)*(day===8?.7:.4)+pair('thermal','optics',thermalShare)*.3+(day===8?0:s.modern/100*.1+s.lab/100*.2);
   score=Math.round(maxScore*weighted*moodPerformance(s.mood));
  }
+ const scoreBeforePenalty=score;
  let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=state.crashVersion===2?(roll<.05?120:roll<.15?80:roll<.3?60:roll<.5?40:roll<.75?20:0):(roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0);score=Math.max(0,score-penalty);}
  const gifted=day===16&&state.talents.includes('master')&&random()<(state.masterProbability??.2);
  const stage=day===8?'预赛':day===16?'复赛':'全国决赛';
  const threshold=examThreshold(state,day);
  const pass=gifted||score>=threshold;
  const training=day===24&&score>=awardThreshold(state,'training');
- const result={stage,...(state.calendarVersion===3?{grade:gradeName(state),week:state.week}:{}),score,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
+ const cutoffsAtExam=day===24?{training:awardThreshold(state,'training'),gold:threshold,silver:awardThreshold(state,'silver')}:{[day===8?'preliminary':'semifinal']:threshold};
+ const result={stage,...(state.calendarVersion===3?{grade:gradeName(state),week:state.week}:{}),score,scoreBeforePenalty,cutoffsAtExam,cutoffMultiplier:state.identity==='elite'&&day!==24?1.3:1,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
  state.medals.push(result);if(!pass&&day!==24)state.route=false;return result;
 }
 export function rollActivityJudgement(state,random=Math.random){

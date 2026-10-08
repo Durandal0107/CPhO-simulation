@@ -1,7 +1,7 @@
 import {mkdir,copyFile,rm} from 'node:fs/promises';
 const root=new URL('../',import.meta.url);const out=new URL('dist/',root);
 await rm(out,{recursive:true,force:true});await mkdir(out,{recursive:true});
-for(const name of ['index.html','style.css','app.js','game.js','storage.js','talents.js','identities.js','cutoffs.js','random.js','calibration.js','calibration-worker.js'])await copyFile(new URL(name,root),new URL(name,out));
+for(const name of ['index.html','style.css','app.js','game.js','storage.js','talents.js','identities.js','cutoffs.js','random.js','calibration.js','calibration-worker.js','reference-policy.js'])await copyFile(new URL(name,root),new URL(name,out));
 await mkdir(new URL('downloads/',out),{recursive:true});
 await copyFile(new URL('downloads/cpho-events.docx',root),new URL('downloads/cpho-events.docx',out));
 console.log('Static website built in dist/');

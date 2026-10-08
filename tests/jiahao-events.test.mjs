@@ -23,7 +23,7 @@ test('从下一回合起完整5回合翻倍，动作与事件叠加减半和天�
  const s=make();s.pending=confession(s);const base=effectiveGain(s,{mechanics:3,mood:-5},true);choose(s,2,()=>.9);
  for(let day=1;day<=7;day++){s.week=day;const active=day>=2&&day<=6;assert.equal(authorityBuffDays(s),active?7-day:0);const gain=effectiveGain(s,{mechanics:3,mood:-5},true);near(gain.mechanics,base.mechanics*(active?2:1));near(gain.mood,base.mood);assert.equal(effectiveGain(s,{mood:3,popularity:2}).mood,active?6:3);}
  beginDay(s,()=>.9);assert.equal(s.authorityBuff,undefined);
- const t=make(['grinder','crash','jiahao','headstart']);t.authorityBuff={start:2,end:6};t.week=2;near(effectiveGain(t,{mechanics:3},true).mechanics,3*1.25*.7*.5*2);
+ const t=make(['grinder','crash','jiahao','headstart']);t.authorityBuff={start:2,end:6};t.week=2;near(effectiveGain(t,{mechanics:3},true).mechanics,3*1.5*.7*.5*2);
 });
 test('重触发刷新随后5回合，倍率仍为2；年级切换不重置或提前消耗',()=>{
  const s=make();s.week=10;s.pending=confession(s);choose(s,2,()=>.9);s.week=12;s.pending=confession(s);choose(s,2,()=>.9);assert.equal(s.week,13);assert.deepEqual(s.authorityBuff,{start:13,end:17});assert.equal(authorityBuffDays(s),5);assert.equal(effectiveGain(s,{mechanics:2}).mechanics,4);

@@ -104,6 +104,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  const state={version:legacy?1:2,scienceVersion:2,name:name.trim().slice(0,16)||'陈梓涵',talents:[...selected],identity,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,optics:15,modern:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
  if(options.cutoffRulesVersion===2)state.cutoffRulesVersion=2;
  if(selected.includes('allin'))state.allinMultiplier=1.5;
+ if(selected.includes('crash'))state.crashVersion=2;
  if(options.jiahaoVersion===1)state.jiahaoVersion=1;
  if(options.balanceVersion===2)state.balanceVersion=2;
  if(options.calendarVersion===3)state.calendarVersion=3;
@@ -128,7 +129,7 @@ export function effectiveGain(state,gain,learning=false,random=null,judgement=nu
   if(value>0){
    if(learning&&[...physicalKeys,'school'].includes(key))value*=state.identity==='elite'?1.2:state.identity==='prodigy'?1.15:1;
    if(authorityBuffDays(state)>0)value*=2;
-   if(state.talents.includes('crash'))value*=1.25;
+   if(state.talents.includes('crash'))value*=state.crashVersion===2?1.5:1.25;
    if(state.talents.includes('headstart')){const rates=state.headstartMultipliers??[.5,.8];value*=rates[state.week<=prepDays(state)?0:1];}
    if(physical.includes(key)&&state.talents.includes('allin'))value*=state.allinMultiplier??2;
    if(learning&&physical.includes(key)&&state.talents.includes('intuition'))value*=1.15;
@@ -181,7 +182,7 @@ export function exam(state,random=Math.random){
   const weighted=pair('mechanics','electro',mechanicalShare)*(day===8?.7:.4)+pair('thermal','optics',thermalShare)*.3+(day===8?0:s.modern/100*.1+s.lab/100*.2);
   score=Math.round(maxScore*weighted*moodPerformance(s.mood));
  }
- let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0;score=Math.max(0,score-penalty);}
+ let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=state.crashVersion===2?(roll<.05?120:roll<.15?80:roll<.3?60:roll<.5?40:roll<.75?20:0):(roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0);score=Math.max(0,score-penalty);}
  const gifted=day===16&&state.talents.includes('master')&&random()<.2;
  const stage=day===8?'预赛':day===16?'复赛':'全国决赛';
  const threshold=examThreshold(state,day);

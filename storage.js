@@ -1,3 +1,4 @@
+import {calibrationSettings} from './calibration.js';
 import {validIdentity} from './identities.js';
 import {talents,legacyTalents,validTalents,totalDays,gradeName,actions,budget} from './game.js';
 const keys=['mechanics','electro','thermal','optics','modern','lab','school','mood','wealth','popularity'];
@@ -22,20 +23,23 @@ function validEvent(e,day){
 function validRun(s){
  if(s.calendarVersion===3&&!validYears(s))return false;
  if(s.runCutoffs===undefined&&s.eventPlan===undefined&&s.worldSeed===undefined&&s.calibration===undefined)return true;
- if(!Number.isInteger(s.worldSeed)||s.worldSeed<0||s.worldSeed>4294967295||!s.runCutoffs||!s.calibration||s.calibration.sampleSize!==1000||s.calibration.worldSeed!==s.worldSeed)return false;
+ if(!Number.isInteger(s.worldSeed)||s.worldSeed<0||s.worldSeed>4294967295||!s.runCutoffs||!s.calibration||s.calibration.sampleSize!==calibrationSettings(s).sampleSize||s.calibration.worldSeed!==s.worldSeed)return false;
  if(!['preliminary','semifinal','training','gold','silver'].every(k=>Number.isFinite(s.runCutoffs[k])&&s.runCutoffs[k]>=0&&s.runCutoffs[k]<=(k==='preliminary'?320:400)&&s.runCutoffs[k]===s.calibration.cutoffs?.[k]))return false;
  if(s.runCutoffs.training<s.runCutoffs.gold||s.runCutoffs.gold<s.runCutoffs.silver)return false;
  return Array.isArray(s.eventPlan)&&s.eventPlan.length===totalDays(s)&&s.eventPlan.every((slot,i)=>slot&&[null,'single','dating','breakup'].includes(slot.condition)&&validEvent(slot.primary,i+1)&&validEvent(slot.fallback,i+1));
 }
 
 function validYears(s){
- const years=s.calibration?.years;
+ const years=s.calibration?.years;const sampleSize=calibrationSettings(s).sampleSize;const cohorts=[sampleSize*.45,sampleSize*.35,sampleSize*.2];
  if(!Array.isArray(years)||years.length!==totalDays(s)/12||!Array.isArray(s.yearCutoffs)||s.yearCutoffs.length!==years.length)return false;
- if(!['初三','高一','高二'].every((g,i)=>s.calibration.cohorts?.[g]===[450,350,200][i]))return false;
- return years.every((y,i)=>y.startDay===i*12+1&&y.grade===gradeName({...s,week:i*12+1})&&y.sampleSize===1000&&['初三','高一','高二'].every((g,j)=>y.cohorts?.[g]===[450,350,200][j])&&['preliminary','semifinal','training','gold','silver'].every(k=>Number.isFinite(y.cutoffs?.[k])&&y.cutoffs[k]>=0&&y.cutoffs[k]<=(k==='preliminary'?320:400)&&y.cutoffs[k]===s.yearCutoffs[i]?.[k]&&(i!==0||y.cutoffs[k]===s.runCutoffs?.[k]))&&y.cutoffs.training>=y.cutoffs.gold&&y.cutoffs.gold>=y.cutoffs.silver);
+ if(!['初三','高一','高二'].every((g,i)=>s.calibration.cohorts?.[g]===cohorts[i]))return false;
+ return years.every((y,i)=>y.startDay===i*12+1&&y.grade===gradeName({...s,week:i*12+1})&&y.sampleSize===sampleSize&&['初三','高一','高二'].every((g,j)=>y.cohorts?.[g]===cohorts[j])&&['preliminary','semifinal','training','gold','silver'].every(k=>Number.isFinite(y.cutoffs?.[k])&&y.cutoffs[k]>=0&&y.cutoffs[k]<=(k==='preliminary'?320:400)&&y.cutoffs[k]===s.yearCutoffs[i]?.[k]&&(i!==0||y.cutoffs[k]===s.runCutoffs?.[k]))&&y.cutoffs.training>=y.cutoffs.gold&&y.cutoffs.gold>=y.cutoffs.silver);
 }
 
 function validAttributeRules(s){
+ if(s.cutoffRulesVersion!==undefined&&s.cutoffRulesVersion!==2)return false;
+ if(s.cutoffRulesVersion===2&&(!s.calibration||s.calibration.cutoffRulesVersion!==2||s.calibration.qualificationRatio!==.1))return false;
+ if(s.allinMultiplier!==undefined&&![1.5,2].includes(s.allinMultiplier))return false;
  if(s.jiahaoVersion!==undefined&&s.jiahaoVersion!==1)return false;
  if(s.jiahaoVersion===1&&s.calibration&&s.calibration.jiahaoVersion!==1)return false;
  if(s.authorityBuff!==undefined&&(s.jiahaoVersion!==1||!s.authorityBuff||!Number.isInteger(s.authorityBuff.start)||s.authorityBuff.start<2||!Number.isInteger(s.authorityBuff.end)||s.authorityBuff.end!==s.authorityBuff.start+4||s.authorityBuff.end>totalDays(s)+5))return false;

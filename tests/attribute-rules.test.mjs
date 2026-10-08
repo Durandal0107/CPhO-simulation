@@ -38,7 +38,7 @@ test('判定弹窗可续存，下一天清除；非法弹窗记录及考试索�
  for(const mutate of [t=>t.activityNotices[0].judgement='unknown',t=>t.activityNotices[0].moodAtAction=50,t=>t.activityNotices[0].gain.unknown=2,t=>t.examNotice=0]){const bad=JSON.parse(JSON.stringify(s));mutate(bad);assert.equal(validSave(bad),false);}
  choose(s,1,()=>.9);assert.deepEqual(s.activityNotices,[]);assert.ok(validSave(s));
 });
-test('新局和1000次校准使用相同属性规则；旧存档保持原规则',()=>{
+test('新局和10000次校准使用相同属性规则；旧存档保持原规则',()=>{
  const config={name:'测试',talents:['grinder','lost'],identity:'ordinary',seed:42};const s=createCalibratedGame(config);assert.equal(s.attributeRulesVersion,1);assert.equal(s.calibration.attributeRulesVersion,1);assert.deepEqual(s,createCalibratedGame(config));assert.ok(validSave(s));
  const broken=JSON.parse(JSON.stringify(s));delete broken.calibration.attributeRulesVersion;assert.equal(validSave(broken),false);
  const old=createGame('旧局',['grinder','lost'],()=>.9);old.stats.mood=80;advance(old,['rest'],()=>0);assert.equal(old.stats.mood,85);assert.equal(old.stats.popularity,10);assert.equal(old.activityNotices,undefined);

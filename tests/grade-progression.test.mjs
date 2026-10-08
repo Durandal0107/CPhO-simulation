@@ -26,9 +26,9 @@ test('完整三年赛程九次考试，最后一天事件处理后结束',()=>{
  const s=make();const days=[];while(!s.ended){Object.assign(s.stats,{mechanics:100,electro:100,thermal:100,optics:100,modern:100,lab:100,mood:100});const day=s.week;const r=advance(s,['rest'],()=>.5);if(r)days.push(day);if(day===36)assert.equal(s.ended,false);settle(s);}
  assert.deepEqual(days,[8,10,12,20,22,24,32,34,36]);assert.deepEqual(s.medals.map(m=>m.grade),['初三','初三','初三','高一','高一','高一','高二','高二','高二']);
 });
-test('每年独立校准混合1000人，当前年级使用自己的分数线，续存不变',()=>{
+test('每年独立校准混合10000人，当前年级使用自己的分数线，续存不变',()=>{
  const s=createCalibratedGame({name:'校准',talents:['grinder','lost','headstart'],identity:'ordinary',seed:42});
- assert.equal(s.eventPlan.length,48);assert.deepEqual(s.calibration.cohorts,{初三:450,高一:350,高二:200});assert.equal(s.calibration.years.length,4);
+ assert.equal(s.eventPlan.length,48);assert.deepEqual(s.calibration.cohorts,{初三:4500,高一:3500,高二:2000});assert.equal(s.calibration.years.length,4);
  for(let i=0;i<4;i++){s.week=i*12+8;assert.equal(examThreshold(s,8),s.yearCutoffs[i].preliminary);assert.ok(s.calibration.years[i].actualFinalExams>0);}
  assert.notDeepEqual(s.yearCutoffs[0],s.yearCutoffs[3]);assert.ok(validSave(s));assert.deepEqual(migrateSave(s),s);
  for(const mutate of [t=>t.yearCutoffs.pop(),t=>t.yearCutoffs[2].gold=-1,t=>t.calibration.cohorts.高二=201]){const bad=JSON.parse(JSON.stringify(s));mutate(bad);assert.equal(validSave(bad),false);}

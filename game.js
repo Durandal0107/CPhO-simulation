@@ -1,4 +1,5 @@
-export const talents=[{name:'物理直觉',desc:'力学初始 +12，学习收益 +15%',key:'intuition'},{name:'实验巧手',desc:'实验初始 +18',key:'hands'},{name:'稳如磐石',desc:'心态初始 +15，比赛发挥更稳定',key:'calm'},{name:'数学底子',desc:'电磁学初始 +12',key:'math'},{name:'自律达人',desc:'每天拥有 7 个行动点',key:'discipline'},{name:'乐天派',desc:'每天额外恢复 5 点心态',key:'optimist'}];
+import {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale} from './talents.js';
+export {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale};
 export const actions=[{id:'mechanics',icon:'↗',name:'力学专题',desc:'从受力分析到刚体运动，建立物理直觉。',cost:2,gain:{mechanics:9,mood:-5},hint:'力学 +9 · 心态 −5'},{id:'electro',icon:'ϟ',name:'电磁学研习',desc:'画好每一条场线，推导每一个边界条件。',cost:2,gain:{electro:9,mood:-5},hint:'电磁学 +9 · 心态 −5'},{id:'thermal',icon:'☼',name:'热学与光学',desc:'在微观世界与光的波动之间寻找答案。',cost:2,gain:{thermal:9,mood:-4},hint:'热光 +9 · 心态 −4'},{id:'lab',icon:'⚗',name:'实验室训练',desc:'调平、读数、拟合，让数据说话。',cost:2,gain:{lab:10,mood:-3},hint:'实验 +10 · 心态 −3'},{id:'school',icon:'▤',name:'回归文化课',desc:'补上落下的作业，给未来留一条路。',cost:1,gain:{school:6,mood:-1},hint:'文化课 +6 · 心态 −1'},{id:'rest',icon:'♧',name:'去操场走走',desc:'放下笔。晚风和朋友也是青春的一部分。',cost:1,gain:{mood:12,school:1},hint:'心态 +12 · 文化课 +1'}];
 // 活动收益按基础值缩放；保留分数精度，避免小收益被取整吞掉。
 const statLabels={mechanics:'力学',electro:'电磁学',thermal:'热光',lab:'实验',school:'文化课',mood:'心态'};
@@ -18,9 +19,10 @@ events.push(
 {title:'离开教室的同伴',text:'一起上过第一堂竞赛课的同学决定回归文化课。收拾书包时，他把一叠实验记录递给你：“替我再往前看看。”',choices:[{name:'认真收下，约好保持联系',result:'你们约定周末一起吃饭。方向变了，友谊并没有被成绩表带走。',gain:{lab:4,mood:6}},{name:'送他一本写满批注的笔记',result:'你把扉页留白，说以后还可以一起讨论有趣的问题。物理教室外，也有很大的世界。',gain:{school:4,mood:7}}]}
 );
 
-export const statNames={mechanics:'力学',electro:'电磁学',thermal:'热学·光学',lab:'实验',school:'文化课',mood:'心态'};
+export const statNames={wealth:'财富',popularity:'人缘',mechanics:'力学',electro:'电磁学',thermal:'热学·光学',lab:'实验',school:'文化课',mood:'心态'};
 export function canChoose(state,choice){return Object.entries(choice.requires||{}).every(([key,min])=>state.stats[key]>=min);}
 export function dailyEvent(state,random=Math.random){
+  if(state.talents.includes('jiahao')&&random()<.1)return {id:'jiahao-special',day:state.week,title:'嘉豪的独有时刻',text:'同学们又在讨论排名，你却突然进入了自己的节奏。今天，要把这份专注用在哪里？',choices:[{name:'自在极意，沉浸推导',result:'你暂时忘记比较，在一道推导中找回了节奏。',gain:{mechanics:4,mood:3}},{name:'分享自己的奇妙解法',result:'你把思路讲给身边的人，收获了意外的共鸣。',gain:{popularity:2,mood:4}}]};
   const pool=events.map((e,i)=>({...e,id:`story-${i}`}));
   for(const key of ['mechanics','electro','thermal','lab']){
     const min=Math.round(22+state.week*.9);
@@ -37,37 +39,85 @@ export function dailyEvent(state,random=Math.random){
 }
 
 const clamp=x=>Math.max(0,Math.min(100,x));
-export function createGame(name,selected){return {version:1,name:name.trim().slice(0,16)||'物竞少年',talents:selected,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,lab:10+(selected.includes('hands')?18:0),school:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};}
-export function applyGain(state,gain,learning=false){for(const [key,value]of Object.entries(gain)){state.stats[key]=clamp(state.stats[key]+(learning&&value>0&&['mechanics','electro','thermal','lab'].includes(key)&&state.talents.includes('intuition')?value*1.15:value));}}
-export function budget(state){return (state.talents.includes('discipline')?7:6)-(state.relationship?1:0);}
-export function exam(state,random=Math.random){const s=state.stats;const base=(s.mechanics+s.electro+s.thermal)/3*.72+s.lab*.28;const score=Math.round(clamp(base*(.75+s.mood/400)+(random()-.5)*(state.talents.includes('calm')?8:18)));const stage=state.week===8?'预赛':state.week===16?'复赛':'全国决赛';const threshold=state.week===8?35:state.week===16?62:82;const pass=score>=threshold;state.medals.push({stage,score,pass,title:state.week===24?(pass?'国赛金牌':score>=70?'国赛银牌':'国赛铜牌'):(pass?(state.week===8?'晋级复赛':'入选省队'):'未能晋级')});if(!pass&&state.week!==24)state.route=false;return state.medals.at(-1);}
+export function createGame(name,selected,random=Math.random){
+ const legacy=Array.isArray(selected)&&selected.length===2&&selected.every(id=>legacyTalents.some(t=>t.key===id));
+ if(!legacy&&!validTalents(selected))throw Error('请选择1项正面、1项负面天赋，中立天赋任选');
+ const state={version:legacy?1:2,name:name.trim().slice(0,16)||'物竞少年',talents:[...selected],week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
+ if(!legacy){state.stats.wealth=100;state.stats.popularity=10-(selected.includes('jiahao')?2:0);state.dailyPenalty=0;beginDay(state,random);}
+ return state;
+}
+export function beginDay(state,random=Math.random){
+ state.dailyPenalty=0;
+ if(state.talents.includes('lost')&&random()<.1){state.dailyPenalty=2;state.stats.mood=clamp(state.stats.mood+5);state.log.unshift({week:state.week,text:'迷失：沉迷电子世界，今天行动点−2、心态 +5。'});}
+}
+export function effectiveGain(state,gain,learning=false,random=null){
+ const physical=['mechanics','electro','thermal','lab'];const out={};
+ for(const [key,base]of Object.entries(gain)){
+  let value=base;
+  if(learning&&random&&state.talents.includes('chaos'))value+=Math.min(8,Math.floor(random()*9))-5;
+  if(value>0){
+   if(state.talents.includes('crash'))value*=1.25;
+   if(state.talents.includes('headstart'))value*=state.week<=prepDays(state)?.5:.8;
+   if(physical.includes(key)&&state.talents.includes('allin'))value*=2;
+   if(learning&&physical.includes(key)&&state.talents.includes('intuition'))value*=1.15;
+  }
+  if(key==='mood'&&value<0&&state.talents.includes('jiahao'))value*=.8;
+  if(key==='school'&&state.talents.includes('allin'))value=0;
+  out[key]=value;
+ }
+ return out;
+}
+export function applyGain(state,gain,learning=false,random=null){
+ const actual=effectiveGain(state,gain,learning,random);
+ for(const [key,value]of Object.entries(actual)){
+  if(key==='wealth')state.stats[key]=Math.max(0,(state.stats[key]||0)+value);
+  else state.stats[key]=clamp((state.stats[key]||0)+value);
+ }
+ if(state.talents.includes('allin'))state.stats.school=0;
+ return actual;
+}
+export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)-(state.relationship?1:0)-(state.dailyPenalty||0);}
+export function exam(state,random=Math.random){
+ const s=state.stats,day=competitionDay(state),scale=examScale(state);
+ const base=(s.mechanics+s.electro+s.thermal)/3*.72+s.lab*.28;
+ let score=Math.round(clamp(base*(.75+s.mood/400)+(random()-.5)*(state.talents.includes('calm')?8:18))*scale);
+ let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0;score=Math.max(0,score-penalty);}
+ const gifted=day===16&&state.talents.includes('master')&&random()<.2;
+ const stage=day===8?'预赛':day===16?'复赛':'全国决赛';
+ const threshold=(day===8?35:day===16?62:82)*scale;
+ const pass=gifted||score>=threshold;
+ const result={stage,score,pass,maxScore:100*scale,penalty,gifted,title:day===24?(pass?'国赛金牌':score>=70*scale?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
+ state.medals.push(result);if(!pass&&day!==24)state.route=false;return result;
+}
 export function advance(state,plan,random=Math.random){
   if(state.ended||state.pending)throw Error('当前无法推进');
   const cost=plan.reduce((sum,id)=>{const action=actions.find(a=>a.id===id);if(!action)throw Error('未知行动');return sum+action.cost;},0);
   if(!plan.length||cost>budget(state))throw Error('行动点不足或计划为空');
-  for(const id of plan)applyGain(state,actions.find(a=>a.id===id).gain,true);
+  const changes={};
+  for(const id of plan){const gain=applyGain(state,actions.find(a=>a.id===id).gain,true,random);for(const [key,value]of Object.entries(gain))changes[key]=(changes[key]||0)+value;}
   applyGain(state,{school:-3,mood:state.talents.includes('optimist')?5:-2});
-  if(state.relationship){applyGain(state,{mood:2});state.log.unshift({week:state.week,text:'恋爱日常：固定占用1行动点，心态 +2。'});}
+  if(state.relationship){const gain=applyGain(state,{mood:2});state.log.unshift({week:state.week,text:`恋爱日常：固定占用1行动点，心态 +${formatStat(gain.mood)}。`});}
   if(state.romanceCooldown>0)state.romanceCooldown--;
-  state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')});
+  state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')+(state.version===2?'（行动结算：'+Object.entries(changes).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+')':'')});
   let result=null;
-  if([8,16,24].includes(state.week)&&state.route){result=exam(state,random);state.log.unshift({week:state.week,text:`${result.stage}：${result.score} 分，${result.title}。`});}
+  if([8,16,24].includes(competitionDay(state))&&state.route){result=exam(state,random);state.log.unshift({week:state.week,text:`${result.stage}：${result.score} 分，${result.title}。`});}
+  if(state.talents.includes('wealthy')&&state.week%7===0){state.stats.wealth*=2;state.stats.popularity=clamp(state.stats.popularity+1);state.log.unshift({week:state.week,text:'家财万贯：财富翻倍，人缘 +1。'});}
   state.pending=dailyEvent(state,random);
   state.lastEvent=state.pending.id;
   return result;
 }
-export function choose(state,index){
+export function choose(state,index,random=Math.random){
   const event=state.pending,choice=event?.choices[index];
   if(!choice)throw Error('无效选择');
   if(!canChoose(state,choice))throw Error('能力尚未达到要求');
-  applyGain(state,choice.gain);
+  const actual=applyGain(state,choice.gain);
   if(typeof choice.relationship==='boolean'){
     state.relationship=choice.relationship;
     state.relationshipSince=choice.relationship?(event.day||state.week):null;
     if(!choice.relationship)state.romanceCooldown=4;
   }
-  state.log.unshift({week:event.day||state.week,text:choice.result});
+  state.log.unshift({week:event.day||state.week,text:choice.result+(state.version===2?'（'+Object.entries(actual).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+'）':'')});
   state.pending=null;
-  if(event.day){if(state.week===24)state.ended=true;else state.week++;}
+  if(event.day){if(state.week===totalDays(state))state.ended=true;else{state.week++;beginDay(state,random);}}
 }
 export function ending(state){const last=state.medals.at(-1);if(last?.stage==='全国决赛')return last.title==='国赛金牌'?'追光的人': '山顶的风景';if(state.stats.school>=80)return '另一条闪光的路';if(state.stats.mood>=65)return '热爱不止于奖牌';return '青春的未完成式';}

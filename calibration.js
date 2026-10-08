@@ -1,4 +1,4 @@
-import {createGame,createEventPlan,advance,choose,budget,actions,canChoose,competitionDay,prepDays,totalDays,gradeRound,gradeName,applyGain} from './game.js';
+import {createGame,createEventPlan,advance,choose,budget,actions,canChoose,competitionDay,prepDays,totalDays,gradeRound,gradeName,performAction,settleDailyStats} from './game.js';
 import {identities} from './identities.js';
 import {seededRandom} from './random.js';
 export function calibrateRun(player,onProgress=()=>{}){
@@ -37,7 +37,7 @@ export function calibrateRun(player,onProgress=()=>{}){
  return {sampleSize:1000,worldSeed:player.worldSeed,semifinalists:semifinalists.length,finalists:finalists.length,actualPreExams:eligible(runs,'pre').length,actualSemiExams:eligible(semifinalists,'semi').length,actualFinalExams:eligible(finalists,'final').length,cutoffs};
 }
 export function createCalibratedGame({name,talents,identity,seed},onProgress){
- const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3});
+ const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1});
  state.worldSeed=seed>>>0;state.eventPlan=createEventPlan(state,state.worldSeed);
  state.calibration=calibrateRun(state,onProgress);
  state.runCutoffs=state.calibration.cutoffs;
@@ -55,13 +55,14 @@ function calibrateGrades(player,onProgress){
  const cohorts={初三:450,高一:350,高二:200};
  const runs=Array.from({length:1000},(_,id)=>{
   const random=seededRandom((player.worldSeed^Math.imul(id+1,0x9e3779b1))>>>0);
-  const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3});
+  const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion});
   state.talents=[];state.dailyPenalty=0;state.log=[];state.calendarPrep=prepDays(player);
   const priorRounds=id<450?0:id<800?12:24;
   // Prior learning establishes grade differences; current-world events start on day 1.
   for(let day=0;day<priorRounds&&!state.ended;day++){
-   for(const action of randomPlan(state,random)){applyGain(state,actions.find(a=>a.id===action).gain,true,random);if(state.ended)break;}
-   if(!state.ended){applyGain(state,{school:-3});state.stats.mood=Math.min(100,state.stats.mood+3);}
+   for(const action of randomPlan(state,random)){performAction(state,action,random,1,false);if(state.ended)break;}
+   if(!state.ended)settleDailyStats(state);
+   state.log=[];
   }
   state.eventPlan=player.eventPlan;
   return {id,state,random,pre:null,semi:null,final:null,priorRounds};
@@ -92,5 +93,5 @@ function calibrateGrades(player,onProgress){
   }
   onProgress(Math.floor(day/totalDays(player)*100));
  }
- return {sampleSize:1000,worldSeed:player.worldSeed,cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
+ return {sampleSize:1000,worldSeed:player.worldSeed,...(player.attributeRulesVersion===1?{attributeRulesVersion:1}:{}),cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
 }

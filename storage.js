@@ -40,6 +40,7 @@ function validAttributeRules(s){
  if(s.referencePolicyVersion!==undefined&&s.referencePolicyVersion!==1)return false;
  if(s.referencePolicyVersion!==s.calibration?.referencePolicyVersion)return false;
  if(!validIndependentPools(s))return false;
+ if(s.masterVersion!==undefined&&s.masterVersion!==2)return false;
  if(s.masterProbability!==undefined&&![.2,.4].includes(s.masterProbability))return false;
  if(s.lostProbability!==undefined&&![.1,.15].includes(s.lostProbability))return false;
  if(s.crashVersion!==undefined&&s.crashVersion!==2)return false;
@@ -80,6 +81,10 @@ function validIndependentPools(s){
 
 function validExamRecord(r){
  if(r.scoreBeforePenalty!==undefined&&(!Number.isInteger(r.scoreBeforePenalty)||r.scoreBeforePenalty<0||r.scoreBeforePenalty>(r.maxScore||100)||!Number.isInteger(r.penalty)||r.penalty<0||r.score!==Math.max(0,r.scoreBeforePenalty-r.penalty)))return false;
+ if(r.masterBonus!==undefined||r.scoreBeforeBonus!==undefined){
+  const expected=r.stage==='复赛'?r.cutoffsAtExam?.semifinal/3:r.stage==='全国决赛'?r.cutoffsAtExam?.training/4:0;
+  if(!Number.isInteger(r.scoreBeforeBonus)||r.scoreBeforeBonus<0||r.scoreBeforeBonus>(r.maxScore||100)||!Number.isFinite(r.masterBonus)||r.masterBonus<0||r.masterBonus!==expected||r.scoreBeforePenalty!==Math.min(r.maxScore||100,Math.round(r.scoreBeforeBonus+r.masterBonus))||r.gifted)return false;
+ }
  if(r.cutoffMultiplier!==undefined&&![1,1.3].includes(r.cutoffMultiplier))return false;
  if(r.cutoffsAtExam===undefined)return true;
  const keys=r.stage==='预赛'?['preliminary']:r.stage==='复赛'?['semifinal']:r.stage==='全国决赛'?['training','gold','silver']:[];

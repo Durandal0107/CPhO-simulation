@@ -37,6 +37,8 @@ function validYears(s){
 }
 
 function validAttributeRules(s){
+ if(s.actionRulesVersion!==undefined&&s.actionRulesVersion!==2)return false;
+ if(s.calibration&&s.actionRulesVersion!==s.calibration.actionRulesVersion)return false;
  if(s.identityRulesVersion!==undefined&&(s.identityRulesVersion!==2||!validIdentity(s.identity)))return false;
  if(s.calibration&&s.identityRulesVersion!==s.calibration.identityRulesVersion)return false;
  if(s.examMoodVersion!==undefined&&s.examMoodVersion!==1)return false;

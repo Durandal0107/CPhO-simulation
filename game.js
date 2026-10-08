@@ -106,6 +106,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  if(options.independentPoolsVersion===1)state.independentPoolsVersion=1;
  if(options.referencePolicyVersion===1)state.referencePolicyVersion=1;
  if(options.examMoodVersion===1)state.examMoodVersion=1;
+ if(options.actionRulesVersion===2)state.actionRulesVersion=2;
  if(identity!==null&&options.identityRulesVersion!==1)state.identityRulesVersion=2;
  if(selected.includes('allin'))state.allinMultiplier=1.5;
  if(selected.includes('crash'))state.crashVersion=2;
@@ -132,6 +133,7 @@ export function effectiveGain(state,gain,learning=false,random=null,judgement=nu
  for(const [key,base]of Object.entries(gain)){
   let value=base;
   if(learning&&random&&state.talents.includes('chaos'))value+=Math.min(8,Math.floor(random()*9))-5;
+  if(learning&&state.actionRulesVersion===2&&key==='mood'&&value<0)value*=.5;
   if(value>0){
    if(learning&&[...physicalKeys,'school'].includes(key))value*=state.identity==='elite'?(state.identityRulesVersion===2?1.1:1.2):state.identity==='prodigy'?(state.identityRulesVersion===2?1.05:1.15):1;
    if(authorityBuffDays(state)>0)value*=2;
@@ -173,7 +175,7 @@ export function applyGain(state,gain,learning=false,random=null,judgement=null){
  checkGameOver(state);
  return actual;
 }
-export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)+(state.identity==='ordinary'?(state.identityRulesVersion===2?1:2):0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
+export function budget(state){return (state.actionRulesVersion===2?4:6)+(state.talents.includes('discipline')||state.talents.includes('grinder')?1:0)+(state.identity==='ordinary'?(state.identityRulesVersion===2?1:2):0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
 export function examThreshold(state,day){const active=state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs;const base=state.version===1?(day===8?35:day===16?62:82):(day===8?active.preliminary:day===16?active.semifinal:active.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
 export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):(state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs)[award];}
 export function moodPerformance(mood){return .75+.25*clamp(mood)/100;}

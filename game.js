@@ -1,8 +1,8 @@
 import {dayRandom} from './random.js';
 import {cutoffs} from './cutoffs.js';
 import {validIdentity} from './identities.js';
-import {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale} from './talents.js';
-export {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale};
+import {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale,gradeRound,yearIndex,gradeName,examDay} from './talents.js';
+export {talents,legacyTalents,validTalents,prepDays,totalDays,competitionDay,examScale,gradeRound,yearIndex,gradeName,examDay};
 export const actions=[{id:'mechanics',icon:'↗',name:'力学专题',desc:'从受力分析到刚体运动，建立物理直觉。',cost:2,gain:{mechanics:9,mood:-5},hint:'力学 +9 · 心态 −5'},{id:'electro',icon:'ϟ',name:'电磁学研习',desc:'画好每一条场线，推导每一个边界条件。',cost:2,gain:{electro:9,mood:-5},hint:'电磁学 +9 · 心态 −5'},{id:'thermal',icon:'☼',name:'热学专题',desc:'从热力学定律到分子运动，理解温度与能量。',cost:2,gain:{thermal:9,mood:-4},hint:'热光 +9 · 心态 −4'},{id:'lab',icon:'⚗',name:'实验室训练',desc:'调平、读数、拟合，让数据说话。',cost:2,gain:{lab:10,mood:-3},hint:'实验 +10 · 心态 −3'},{id:'school',icon:'▤',name:'回归文化课',desc:'补上落下的作业，给未来留一条路。',cost:1,gain:{school:6,mood:-1},hint:'文化课 +6 · 心态 −1'},{id:'rest',icon:'♧',name:'去操场走走',desc:'放下笔。晚风和朋友也是青春的一部分。',cost:1,gain:{mood:12,school:1},hint:'心态 +12 · 文化课 +1'}];
 actions.splice(3,0,
  {id:'optics',icon:'◈',name:'光学专题',desc:'从几何成像到干涉衍射，追踪光的传播。',cost:2,gain:{optics:9,mood:-4}},
@@ -72,11 +72,12 @@ export function createEventPlan(state,seed){
 }
 
 const clamp=x=>Math.max(0,Math.min(100,x));
-export function createGame(name,selected,random=Math.random,identity=null){
+export function createGame(name,selected,random=Math.random,identity=null,options={}){
  if(identity!==null&&!validIdentity(identity))throw Error('请选择有效身份');
  const legacy=Array.isArray(selected)&&selected.length===2&&selected.every(id=>legacyTalents.some(t=>t.key===id));
  if(!legacy&&!validTalents(selected))throw Error('请选择1项正面、1项负面天赋，中立天赋任选');
  const state={version:legacy?1:2,scienceVersion:2,name:name.trim().slice(0,16)||'陈梓涵',talents:[...selected],identity,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,optics:15,modern:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
+ if(options.calendarVersion===3)state.calendarVersion=3;
  if(selected.includes('headstart')){state.calendarPrep=12;state.headstartMultipliers=[.7,.9];}
  if(!legacy){state.stats.wealth=100;state.stats.popularity=10-(selected.includes('jiahao')?2:0);state.dailyPenalty=0;beginDay(state,random);}
  return state;
@@ -105,6 +106,7 @@ export function effectiveGain(state,gain,learning=false,random=null){
  return out;
 }
 export function checkElimination(state){
+ if(state.calendarVersion===3&&gradeName(state)!=='高二')return false;
  const result=state.medals.at(-1);
  if(state.endReason==='mood'||state.route!==false||!result||result.pass||!['预赛','复赛'].includes(result.stage))return false;
  state.ended=true;state.endReason='eliminated';state.pending=null;
@@ -127,11 +129,11 @@ export function applyGain(state,gain,learning=false,random=null){
  return actual;
 }
 export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)+(state.identity==='ordinary'?2:0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
-export function examThreshold(state,day){const active=state.runCutoffs||cutoffs;const base=state.version===1?(day===8?35:day===16?62:82):(day===8?active.preliminary:day===16?active.semifinal:active.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
-export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):(state.runCutoffs||cutoffs)[award];}
+export function examThreshold(state,day){const active=state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs;const base=state.version===1?(day===8?35:day===16?62:82):(day===8?active.preliminary:day===16?active.semifinal:active.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
+export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):(state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs)[award];}
 export function moodPerformance(mood){return .75+.25*clamp(mood)/100;}
 export function exam(state,random=Math.random){
- const s=state.stats,day=competitionDay(state);
+ const s=state.stats,day=examDay(state);
  let maxScore,score;
  if(state.version===1){maxScore=100;const base=theoryKeys.reduce((sum,key)=>sum+s[key],0)/theoryKeys.length*.72+s.lab*.28;score=Math.round(clamp(base*(.75+s.mood/400)+(random()-.5)*(state.talents.includes('calm')?8:18)));}
  else{
@@ -147,7 +149,7 @@ export function exam(state,random=Math.random){
  const threshold=examThreshold(state,day);
  const pass=gifted||score>=threshold;
  const training=day===24&&score>=awardThreshold(state,'training');
- const result={stage,score,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
+ const result={stage,...(state.calendarVersion===3?{grade:gradeName(state),week:state.week}:{}),score,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
  state.medals.push(result);if(!pass&&day!==24)state.route=false;return result;
 }
 export function advance(state,plan,random=Math.random,options={}){
@@ -164,7 +166,7 @@ export function advance(state,plan,random=Math.random,options={}){
   if(state.romanceCooldown>0)state.romanceCooldown--;
   state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')+(state.version===2?'（行动结算：'+Object.entries(changes).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+')':'')});
   let result=null;
-  if([8,16,24].includes(competitionDay(state))&&state.route){result=exam(state,random);state.log.unshift({week:state.week,text:`${result.stage}：${result.score} 分，${result.title}。`});if(!result.pass&&competitionDay(state)!==24&&!options.deferQualification){checkElimination(state);return result;}}
+  if([8,16,24].includes(examDay(state))&&state.route){result=exam(state,random);state.log.unshift({week:state.week,text:`${result.grade?result.grade+' · ':''}${result.stage}：${result.score} 分，${result.title}。`});if(!result.pass&&examDay(state)!==24&&!options.deferQualification){if(checkElimination(state))return result;}}
   if(state.talents.includes('wealthy')&&state.week%7===0){state.stats.wealth*=2;state.stats.popularity=clamp(state.stats.popularity+1);state.log.unshift({week:state.week,text:'家财万贯：财富翻倍，人缘 +1。'});}
   state.pending=dailyEvent(state,random);
   state.lastEvent=state.pending.id;
@@ -183,6 +185,6 @@ export function choose(state,index,random=Math.random){
   state.log.unshift({week:event.day||state.week,text:choice.result+(state.version===2?'（'+Object.entries(actual).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+'）':'')});
   state.pending=null;
   if(state.ended)return;
-  if(event.day){if(state.week===totalDays(state))state.ended=true;else{state.week++;beginDay(state,random);}}
+  if(event.day){if(state.week===totalDays(state))state.ended=true;else{state.week++;if(state.calendarVersion===3&&gradeRound(state)===1)state.route=true;beginDay(state,random);}}
 }
 export function ending(state){if(state.endReason==='mood')return 'GAMEOVER';if(state.endReason==='eliminated')return '未能晋级';const last=state.medals.at(-1);if(last?.stage==='全国决赛')return last.title==='国赛金牌'?'追光的人': '山顶的风景';if(state.stats.school>=80)return '另一条闪光的路';if(state.stats.mood>=65)return '热爱不止于奖牌';return '青春的未完成式';}

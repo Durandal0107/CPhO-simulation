@@ -13,6 +13,11 @@ export const legacyTalents=[{key:'intuition',name:'物理直觉'},{key:'hands',n
 export function validTalents(ids){return Array.isArray(ids)&&new Set(ids).size===ids.length&&ids.every(id=>talents.some(t=>t.key===id))&&['positive','negative'].every(group=>ids.filter(id=>talents.find(t=>t.key===id)?.group===group).length===1);}
 export const talentName=id=>[...talents,...legacyTalents].find(t=>t.key===id)?.name||id;
 export const prepDays=s=>s.calendarPrep??(s.talents.includes('headstart')?6:0);
-export const totalDays=s=>24+prepDays(s);
+export const totalDays=s=>(s.calendarVersion===3?36:24)+prepDays(s);
 export const competitionDay=s=>s.week-prepDays(s);
 export const examScale=s=>s.version===2?4:1;
+
+export const gradeRound=s=>(s.week-1)%12+1;
+export const yearIndex=s=>Math.floor((s.week-1)/12);
+export const gradeName=s=>s.calendarVersion===3?['初二','初三','高一','高二'][yearIndex(s)+(prepDays(s)?0:1)]:'高二';
+export const examDay=s=>s.calendarVersion===3?({8:8,10:16,12:24}[gradeRound(s)]??0):competitionDay(s);

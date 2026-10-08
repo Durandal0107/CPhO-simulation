@@ -103,6 +103,7 @@ export function applyGain(state,gain,learning=false,random=null){
 export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)+(state.identity==='ordinary'?2:0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
 export function examThreshold(state,day){const base=state.version===1?(day===8?35:day===16?62:82):(day===8?cutoffs.preliminary:day===16?cutoffs.semifinal:cutoffs.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
 export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):cutoffs[award];}
+export function moodPerformance(mood){return .75+.25*clamp(mood)/100;}
 export function exam(state,random=Math.random){
  const s=state.stats,day=competitionDay(state);
  let maxScore,score;
@@ -112,7 +113,7 @@ export function exam(state,random=Math.random){
   const mechanicalShare=.4+random()*.2,thermalShare=.4+random()*.2;
   const pair=(first,second,share)=>s[first]/100*share+s[second]/100*(1-share);
   const weighted=pair('mechanics','electro',mechanicalShare)*(day===8?.7:.4)+pair('thermal','optics',thermalShare)*.3+(day===8?0:s.modern/100*.1+s.lab/100*.2);
-  score=Math.round(maxScore*weighted);
+  score=Math.round(maxScore*weighted*moodPerformance(s.mood));
  }
  let penalty=0;if(state.talents.includes('crash')){const roll=random();penalty=roll<.05?120:roll<.15?80:roll<.4?60:roll<.9?40:0;score=Math.max(0,score-penalty);}
  const gifted=day===16&&state.talents.includes('master')&&random()<.2;
@@ -120,7 +121,7 @@ export function exam(state,random=Math.random){
  const threshold=examThreshold(state,day);
  const pass=gifted||score>=threshold;
  const training=day===24&&score>=awardThreshold(state,'training');
- const result={stage,score,pass,maxScore,penalty,gifted,training,title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
+ const result={stage,score,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
  state.medals.push(result);if(!pass&&day!==24)state.route=false;return result;
 }
 export function advance(state,plan,random=Math.random,options={}){

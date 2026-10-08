@@ -2,17 +2,17 @@
   "seed": 20261008,
   "sampleSize": 1000,
   "semifinalists": 299,
-  "finalists": 73,
+  "finalists": 78,
   "actualPreExams": 995,
-  "actualSemiExams": 242,
-  "actualFinalExams": 43,
+  "actualSemiExams": 257,
+  "actualFinalExams": 70,
   "ranking": "descending; gameover before an exam excluded; top-percent cutoff inclusive",
   "dailyPlan": "uniform random action-point allowance from 1 to budget; random affordable actions",
   "cutoffs": {
-    "preliminary": 85,
-    "semifinal": 145,
-    "training": 198,
-    "gold": 194,
-    "silver": 180
+    "preliminary": 75,
+    "semifinal": 125,
+    "training": 175,
+    "gold": 166,
+    "silver": 157
   }
 }

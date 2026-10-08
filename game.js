@@ -113,8 +113,10 @@ export function advance(state,plan,random=Math.random){
   if(!plan.length||cost>budget(state))throw Error('行动点不足或计划为空');
   const changes={};
   for(const id of plan){const gain=applyGain(state,actions.find(a=>a.id===id).gain,true,random);for(const [key,value]of Object.entries(gain))changes[key]=(changes[key]||0)+value;if(state.ended)return null;}
-  applyGain(state,{school:-3,mood:state.talents.includes('optimist')?5:-2});
+  applyGain(state,{school:-3});
   if(state.ended)return null;
+  state.stats.mood=clamp(state.stats.mood+3+(state.talents.includes('optimist')?5:0));
+  state.log.unshift({week:state.week,text:'每日自然恢复：心态 +3。'+(state.talents.includes('optimist')?'乐天派额外心态 +5。':'')});
   if(state.relationship){const gain=applyGain(state,{mood:2});state.log.unshift({week:state.week,text:`恋爱日常：固定占用1行动点，心态 +${formatStat(gain.mood)}。`});}
   if(state.romanceCooldown>0)state.romanceCooldown--;
   state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')+(state.version===2?'（行动结算：'+Object.entries(changes).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+')':'')});

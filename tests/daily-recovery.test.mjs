@@ -1,0 +1,3 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {createGame,advance,choose} from '../game.js';
+test('每日结算固定恢复3点，最多100；事件选择不重复恢复',()=>{const s=createGame('测试',['grinder','lost'],()=>.9);s.stats.mood=50;advance(s,['school'],()=>.5);assert.equal(s.stats.mood,52);const before=s.stats.mood;choose(s,1,()=>.9);assert.equal(s.stats.mood,before+7);s.stats.mood=99;advance(s,['rest'],()=>.5);assert.equal(s.stats.mood,100);});
+test('自然恢复不受收益倍率影响',()=>{const s=createGame('测试',['grinder','crash','headstart'],()=>.9);s.stats.mood=50;advance(s,['school'],()=>.5);assert.equal(s.stats.mood,52);});

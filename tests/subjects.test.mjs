@@ -1,6 +1,6 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {createGame,advance,effectiveGain,dailyEvent,exam,physicalKeys} from '../game.js';import {validSave,migrateSave} from '../storage.js';
 const make=()=>createGame('新学科',['grinder','lost'],()=>.9);
-test('三科各自独立训练，基础收益3、心态消耗4',()=>{for(const subject of ['thermal','optics','modern']){const s=make();advance(s,[subject],()=>.5);for(const other of ['thermal','optics','modern'])assert.equal(s.stats[other],other===subject?18:15);assert.equal(s.stats.mood,64);}});
+test('三科各自独立训练，基础收益3、心态消耗4',()=>{for(const subject of ['thermal','optics','modern']){const s=make();advance(s,[subject],()=>.5);for(const other of ['thermal','optics','modern'])assert.equal(s.stats[other],other===subject?18:15);assert.equal(s.stats.mood,69);}});
 test('新增学科享有身份与天赋加成',()=>{const s=createGame('测试',['grinder','lost','allin'],()=>.9,'elite');for(const key of ['optics','modern'])assert.ok(Math.abs(effectiveGain(s,{[key]:3},true)[key]-7.2)<1e-9);});
 test('理论计分覆盖五科，新增能力影响成绩',()=>{const s=make();Object.assign(s.stats,{mechanics:50,electro:50,thermal:50,optics:50,modern:50,lab:50,mood:100});s.week=8;assert.equal(exam(s,()=>.5).score,200);s.stats.modern=100;assert.equal(exam(s,()=>.5).score,229);s.stats.optics=100;assert.equal(exam(s,()=>.5).score,258);});
 test('新增学科存在独立难题门槛',()=>{const s=make();for(const key of ['optics','modern']){const index=8+physicalKeys.indexOf(key);const e=dailyEvent(s,()=> (index+.1)/15);assert.equal(e.id,'challenge-'+key);assert.ok(e.choices[0].requires[key]>0);}});

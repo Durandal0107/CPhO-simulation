@@ -23,7 +23,7 @@ test('心态和概率严格边界，每次活动只判定一次，正常区间�
 test('成功和失败分别放大正负收益，倍率与已有身份天赋叠加',()=>{
  const s=make();s.stats.mood=80;performAction(s,'mechanics',()=>0);assert.equal(s.stats.mechanics,24);assert.equal(s.stats.mood,77.5);assert.equal(s.activityNotices[0].judgement,'success');
  const t=make();t.stats.mood=20;performAction(t,'mechanics',()=>0);assert.equal(t.stats.mechanics,19.5);assert.equal(t.stats.mood,10);assert.equal(t.activityNotices[0].judgement,'failure');
- const u=make(['grinder','crash','headstart','jiahao'],'elite');u.stats.mood=80;performAction(u,'mechanics',()=>0);near(u.stats.mechanics,25.56);near(u.stats.mood,77.8);
+ const u=make(['grinder','crash','headstart','jiahao'],'elite');u.stats.mood=80;performAction(u,'mechanics',()=>0);near(u.stats.mechanics,24.93);near(u.stats.mood,77.8);
 });
 test('连续活动按各自开始时心态判定；失败归零立即停止后续活动',()=>{
  const s=make();s.stats.mood=26;advance(s,['mechanics','mechanics'],()=>0);near(s.stats.mechanics,22.5);assert.equal(s.activityNotices.length,1);assert.equal(s.activityNotices[0].sequence,2);assert.equal(s.activityNotices[0].moodAtAction,21);

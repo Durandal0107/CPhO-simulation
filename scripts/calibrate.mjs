@@ -6,7 +6,7 @@ let seed=20261008;
 const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
 const runs=Array.from({length:10000},(_,id)=>{
  const identity=identities[Math.floor(random()*identities.length)].key;
- const s=createGame('模拟',['grinder','lost'],()=>.9,identity);
+ const s=createGame('模拟',['grinder','lost'],()=>.9,identity,{identityRulesVersion:1});
  s.talents=[];s.dailyPenalty=0;s.log=[];
  return {id,state:s,pre:null,semi:null,final:null};
 });

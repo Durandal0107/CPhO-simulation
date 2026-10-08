@@ -67,13 +67,20 @@ export function effectiveGain(state,gain,learning=false,random=null){
  }
  return out;
 }
+export function checkGameOver(state){
+ if(state.stats.mood>0)return false;
+ state.stats.mood=0;state.ended=true;state.endReason='mood';state.pending=null;
+ return true;
+}
 export function applyGain(state,gain,learning=false,random=null){
+ if(state.ended)return {};
  const actual=effectiveGain(state,gain,learning,random);
  for(const [key,value]of Object.entries(actual)){
   if(key==='wealth')state.stats[key]=Math.max(0,(state.stats[key]||0)+value);
   else state.stats[key]=clamp((state.stats[key]||0)+value);
  }
  if(state.talents.includes('allin'))state.stats.school=0;
+ checkGameOver(state);
  return actual;
 }
 export function budget(state){return (state.talents.includes('discipline')||state.talents.includes('grinder')?7:6)-(state.relationship?1:0)-(state.dailyPenalty||0);}
@@ -94,8 +101,9 @@ export function advance(state,plan,random=Math.random){
   const cost=plan.reduce((sum,id)=>{const action=actions.find(a=>a.id===id);if(!action)throw Error('未知行动');return sum+action.cost;},0);
   if(!plan.length||cost>budget(state))throw Error('行动点不足或计划为空');
   const changes={};
-  for(const id of plan){const gain=applyGain(state,actions.find(a=>a.id===id).gain,true,random);for(const [key,value]of Object.entries(gain))changes[key]=(changes[key]||0)+value;}
+  for(const id of plan){const gain=applyGain(state,actions.find(a=>a.id===id).gain,true,random);for(const [key,value]of Object.entries(gain))changes[key]=(changes[key]||0)+value;if(state.ended)return null;}
   applyGain(state,{school:-3,mood:state.talents.includes('optimist')?5:-2});
+  if(state.ended)return null;
   if(state.relationship){const gain=applyGain(state,{mood:2});state.log.unshift({week:state.week,text:`恋爱日常：固定占用1行动点，心态 +${formatStat(gain.mood)}。`});}
   if(state.romanceCooldown>0)state.romanceCooldown--;
   state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')+(state.version===2?'（行动结算：'+Object.entries(changes).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+')':'')});
@@ -118,6 +126,7 @@ export function choose(state,index,random=Math.random){
   }
   state.log.unshift({week:event.day||state.week,text:choice.result+(state.version===2?'（'+Object.entries(actual).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+'）':'')});
   state.pending=null;
+  if(state.ended)return;
   if(event.day){if(state.week===totalDays(state))state.ended=true;else{state.week++;beginDay(state,random);}}
 }
-export function ending(state){const last=state.medals.at(-1);if(last?.stage==='全国决赛')return last.title==='国赛金牌'?'追光的人': '山顶的风景';if(state.stats.school>=80)return '另一条闪光的路';if(state.stats.mood>=65)return '热爱不止于奖牌';return '青春的未完成式';}
+export function ending(state){if(state.endReason==='mood')return 'GAMEOVER';const last=state.medals.at(-1);if(last?.stage==='全国决赛')return last.title==='国赛金牌'?'追光的人': '山顶的风景';if(state.stats.school>=80)return '另一条闪光的路';if(state.stats.mood>=65)return '热爱不止于奖牌';return '青春的未完成式';}

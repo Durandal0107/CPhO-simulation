@@ -77,6 +77,7 @@ export function createGame(name,selected,random=Math.random,identity=null){
  const legacy=Array.isArray(selected)&&selected.length===2&&selected.every(id=>legacyTalents.some(t=>t.key===id));
  if(!legacy&&!validTalents(selected))throw Error('请选择1项正面、1项负面天赋，中立天赋任选');
  const state={version:legacy?1:2,scienceVersion:2,name:name.trim().slice(0,16)||'陈梓涵',talents:[...selected],identity,week:1,stats:{mechanics:18+(selected.includes('intuition')?12:0),electro:15+(selected.includes('math')?12:0),thermal:15,optics:15,modern:15,lab:10+(selected.includes('hands')?18:0),school:selected.includes('allin')?0:65,mood:70+(selected.includes('calm')?15:0)},log:[],medals:[],route:true,pending:null,ended:false,relationship:false,relationshipSince:null,romanceCooldown:0,lastEvent:null};
+ if(selected.includes('headstart')){state.calendarPrep=12;state.headstartMultipliers=[.7,.9];}
  if(!legacy){state.stats.wealth=100;state.stats.popularity=10-(selected.includes('jiahao')?2:0);state.dailyPenalty=0;beginDay(state,random);}
  return state;
 }
@@ -92,7 +93,7 @@ export function effectiveGain(state,gain,learning=false,random=null){
   if(value>0){
    if(learning&&[...physicalKeys,'school'].includes(key))value*=state.identity==='elite'?1.2:state.identity==='prodigy'?1.15:1;
    if(state.talents.includes('crash'))value*=1.25;
-   if(state.talents.includes('headstart'))value*=state.week<=prepDays(state)?.5:.8;
+   if(state.talents.includes('headstart')){const rates=state.headstartMultipliers??[.5,.8];value*=rates[state.week<=prepDays(state)?0:1];}
    if(physical.includes(key)&&state.talents.includes('allin'))value*=2;
    if(learning&&physical.includes(key)&&state.talents.includes('intuition'))value*=1.15;
   }

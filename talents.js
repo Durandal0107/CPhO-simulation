@@ -2,7 +2,7 @@ export const talents=[
  {key:'grinder',group:'positive',name:'！？卷卷？！',desc:'吓哭了。',effect:'每回合行动点 +1'},
  {key:'master',group:'positive',name:'大手',desc:'？？的天还是黑了。',effect:'复赛有20%概率无视分数直接晋级'},
  {key:'wealthy',group:'positive',name:'家财万贯',desc:'我去，？✌',effect:'每7天财富翻倍、人缘 +1（初始财富100）'},
- {key:'headstart',group:'neutral',name:'赢在起跑线',desc:'？！低龄化！？',effect:'增加6天准备期；准备期正收益−50%，正式期正收益−20%'},
+ {key:'headstart',group:'neutral',name:'赢在起跑线',desc:'？！低龄化！？',effect:'初始回合数增加12；额外回合数值加成−30%，原有回合数值加成−10%'},
  {key:'jiahao',group:'neutral',name:'天生嘉豪',desc:'自在极意豪。',effect:'心态消耗−20%，初始人缘−2；每天10%概率出现专属事件'},
  {key:'allin',group:'neutral',name:'破釜沉舟',desc:'我再也不想学文化课了。',effect:'文化课恒定为0，物竞正收益 +100%'},
  {key:'crash',group:'negative',name:'坠机体质',desc:'Man！',effect:'正收益 +25%；考试5%扣120、10%扣80、25%扣60、50%扣40分，10%不扣分'},

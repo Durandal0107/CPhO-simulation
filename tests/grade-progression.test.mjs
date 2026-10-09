@@ -22,8 +22,8 @@ test('高二预赛、复赛失败立即结束；决赛铜牌也能完成故事',
  for(const day of [32,34]){const s=make();s.week=day;for(const k of [...theoryKeys,'lab'])s.stats[k]=0;advance(s,['rest'],()=>.5);assert.equal(s.endReason,'eliminated');assert.equal(s.pending,null);}
  const s=make();s.week=36;advance(s,['rest'],()=>.5);assert.equal(s.ended,false);assert.equal(s.medals.at(-1).grade,'高二');settle(s);assert.equal(s.ended,true);
 });
-test('完整三年赛程九次考试，最后一天事件处理后结束',()=>{
- const s=make();const days=[];while(!s.ended){Object.assign(s.stats,{mechanics:100,electro:100,thermal:100,optics:100,modern:100,lab:100,mood:100});const day=s.week;const r=advance(s,['rest'],()=>.5);if(r)days.push(day);if(day===36)assert.equal(s.ended,false);settle(s);}
+test('未进入集训队时完整三年九次考试，最后一天事件处理后结束',()=>{
+ const s=make();s.runCutoffs={preliminary:10,semifinal:10,training:400,gold:300,silver:200};const days=[];while(!s.ended){Object.assign(s.stats,{mechanics:90,electro:90,thermal:90,optics:90,modern:90,lab:90,mood:100});const day=s.week;const r=advance(s,['rest'],()=>.5);if(r)days.push(day);if(day===36)assert.equal(s.ended,false);settle(s);}
  assert.deepEqual(days,[8,10,12,20,22,24,32,34,36]);assert.deepEqual(s.medals.map(m=>m.grade),['初三','初三','初三','高一','高一','高一','高二','高二','高二']);
 });
 test('每场重建混合10000人，独立随机池保留年级构成和对应分数线，续存不变',()=>{

@@ -16,7 +16,7 @@ test('旧身份存档保留学习20%／15%及路过2行动点，新身份参数�
   if(id==='ordinary'){assert.equal(budget(fresh),8);assert.equal(budget(restored),9);}
   const legacy=createGame('旧规则',['grinder','lost'],()=>.9,id,{identityRulesVersion:1});assert.equal(legacy.identityRulesVersion,undefined);assert.ok(validSave(legacy));assert.equal(budget(legacy),budget(restored));
  }
- const broken=game('elite');broken.identityRulesVersion=4;assert.equal(validSave(broken),false);
+ const broken=game('elite');broken.identityRulesVersion=5;assert.equal(validSave(broken),false);
 });
 
 test('新版学习加成覆盖七项学习属性，并叠加行动收益减半',()=>{

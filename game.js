@@ -113,7 +113,7 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  if(options.referencePolicyVersion===1)state.referencePolicyVersion=1;
  if(options.examMoodVersion===1)state.examMoodVersion=1;
  if([2,3].includes(options.actionRulesVersion))state.actionRulesVersion=options.actionRulesVersion;
- if(identity!==null&&options.identityRulesVersion!==1)state.identityRulesVersion=options.identityRulesVersion===3?3:2;
+ if(identity!==null&&options.identityRulesVersion!==1)state.identityRulesVersion=[3,4].includes(options.identityRulesVersion)?options.identityRulesVersion:2;
  if(selected.includes('allin'))state.allinMultiplier=1.5;
  if(selected.includes('crash'))state.crashVersion=2;
  if(selected.includes('lost'))state.lostProbability=.15;
@@ -141,7 +141,7 @@ export function effectiveGain(state,gain,learning=false,random=null,judgement=nu
   if(learning&&random&&state.talents.includes('chaos'))value+=Math.min(8,Math.floor(random()*9))-5;
   if(learning&&state.actionRulesVersion>=2&&key==='mood'&&value<0)value*=.5;
   if(value>0){
-   if(learning&&(physical.includes(key)||key==='school'))value*=state.identity==='elite'?(state.identityRulesVersion>=2?1.1:1.2):state.identity==='prodigy'?(state.identityRulesVersion===3?1.1:state.identityRulesVersion===2?1.05:1.15):1;
+   if(learning&&(physical.includes(key)||key==='school'))value*=state.identity==='elite'?(state.identityRulesVersion===4?1.15:state.identityRulesVersion>=2?1.1:1.2):state.identity==='prodigy'?(state.identityRulesVersion>=3?1.1:state.identityRulesVersion===2?1.05:1.15):1;
    if(authorityBuffDays(state)>0)value*=2;
    if(state.talents.includes('crash'))value*=state.crashVersion===2?1.5:1.25;
    if(state.talents.includes('headstart')){const rates=state.headstartMultipliers??[.5,.8];value*=rates[state.week<=prepDays(state)?0:1];}
@@ -158,6 +158,12 @@ export function effectiveGain(state,gain,learning=false,random=null,judgement=nu
   out[key]=value;
  }
  return out;
+}
+export function checkTrainingVictory(state){
+ const result=state.medals.at(-1);
+ if(state.stats.mood<=0||state.endReason==='mood'||result?.stage!=='全国决赛'||result.training!==true||!result.pass||result.score<(result.cutoffsAtExam?.training??awardThreshold(state,'training')))return false;
+ result.title='进入集训队';state.ended=true;state.endReason='training';state.pending=null;
+ return true;
 }
 export function checkElimination(state){
  if(state.calendarVersion===3&&gradeName(state)!=='高二')return false;
@@ -183,7 +189,7 @@ export function applyGain(state,gain,learning=false,random=null,judgement=null){
  checkGameOver(state);
  return actual;
 }
-export function budget(state){return (state.actionRulesVersion>=2?4:6)+(state.talents.includes('discipline')||state.talents.includes('grinder')?1:0)+(state.identity==='ordinary'?(state.identityRulesVersion===3?(state.week%2===0?1:0):state.identityRulesVersion===2?1:2):0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
+export function budget(state){return (state.actionRulesVersion>=2?4:6)+(state.talents.includes('discipline')||state.talents.includes('grinder')?1:0)+(state.identity==='ordinary'?(state.identityRulesVersion>=3?(state.week%2===0?1:0):state.identityRulesVersion===2?1:2):0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
 export function examThreshold(state,day){const active=state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs;const base=state.version===1?(day===8?35:day===16?62:82):(day===8?active.preliminary:day===16?active.semifinal:active.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
 export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):(state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs)[award];}
 export function moodPerformance(mood){return .75+.25*clamp(mood)/100;}
@@ -209,9 +215,9 @@ export function exam(state,random=Math.random,options={}){
  const pass=gifted||score>=threshold;
  const training=day===24&&score>=awardThreshold(state,'training');
  const cutoffsAtExam=day===24?{training:awardThreshold(state,'training'),gold:threshold,silver:awardThreshold(state,'silver')}:{[day===8?'preliminary':'semifinal']:threshold};
- const result={stage,...(state.calendarVersion===3?{grade:gradeName(state),week:state.week}:{}),score,scoreBeforePenalty,...(state.masterVersion===2&&state.talents.includes('master')?{scoreBeforeBonus,masterBonus}:{}),cutoffsAtExam,cutoffMultiplier:state.identity==='elite'&&day!==24?1.3:1,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
+ const result={stage,...(state.calendarVersion===3?{grade:gradeName(state),week:state.week}:{}),score,scoreBeforePenalty,...(state.masterVersion===2&&state.talents.includes('master')?{scoreBeforeBonus,masterBonus}:{}),cutoffsAtExam,cutoffMultiplier:state.identity==='elite'&&day!==24?1.3:1,pass,maxScore,penalty,gifted,training,moodAtExam:s.mood,performanceFactor:moodPerformance(s.mood),title:day===24?(training?'进入集训队':pass?'国赛金牌':score>=awardThreshold(state,'silver')?'国赛银牌':'国赛铜牌'):(pass?(day===8?'晋级复赛':'入选省队'):'未能晋级')};
  state.medals.push(result);if(!pass&&day!==24)state.route=false;
- if(!options.deferQualification)settleExamMood(state,result);
+ if(!options.deferQualification){settleExamMood(state,result);checkTrainingVictory(state);}
  return result;
 }
 export function settleExamMood(state,result){
@@ -296,4 +302,4 @@ export function choose(state,index,random=Math.random){
   if(state.ended)return;
   if(event.day){if(state.week===totalDays(state))state.ended=true;else{state.week++;if(state.calendarVersion===3&&gradeRound(state)===1)state.route=true;beginDay(state,random);}}
 }
-export function ending(state){if(state.endReason==='mood')return 'GAMEOVER';if(state.endReason==='eliminated')return '未能晋级';const last=state.medals.at(-1);if(last?.stage==='全国决赛')return last.title==='国赛金牌'?'追光的人': '山顶的风景';if(state.stats.school>=80)return '另一条闪光的路';if(state.stats.mood>=65)return '热爱不止于奖牌';return '青春的未完成式';}
+export function ending(state){if(state.endReason==='training')return '游戏胜利';if(state.endReason==='mood')return 'GAMEOVER';if(state.endReason==='eliminated')return '未能晋级';const last=state.medals.at(-1);if(last?.stage==='全国决赛')return last.title==='国赛金牌'?'追光的人': '山顶的风景';if(state.stats.school>=80)return '另一条闪光的路';if(state.stats.mood>=65)return '热爱不止于奖牌';return '青春的未完成式';}

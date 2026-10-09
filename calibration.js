@@ -42,7 +42,7 @@ export function calibrateRun(player,onProgress=()=>{}){
  return {sampleSize,qualificationRatio,...(player.actionRulesVersion!==undefined?{actionRulesVersion:player.actionRulesVersion}:{}),...(player.identityRulesVersion!==undefined?{identityRulesVersion:player.identityRulesVersion}:{}),...(player.cutoffRulesVersion===2?{cutoffRulesVersion:2}:{}),worldSeed:player.worldSeed,semifinalists:semifinalists.length,finalists:finalists.length,actualPreExams:eligible(runs,'pre').length,actualSemiExams:eligible(semifinalists,'semi').length,actualFinalExams:eligible(finalists,'final').length,cutoffs};
 }
 export function createCalibratedGame({name,talents,identity,seed},onProgress){
- const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:2,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2,independentPoolsVersion:1,referencePolicyVersion:1,examMoodVersion:1,identityRulesVersion:3,actionRulesVersion:3});
+ const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:2,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2,independentPoolsVersion:1,referencePolicyVersion:1,examMoodVersion:1,identityRulesVersion:4,actionRulesVersion:3});
  state.worldSeed=seed>>>0;state.eventPlan=createEventPlan(state,state.worldSeed);
  state.calibration=calibrateRun(state,onProgress);
  state.runCutoffs=state.calibration.cutoffs;
@@ -90,7 +90,7 @@ function calibrateCompetition(player,startDay,stageIndex,onProgress){
   const priorRounds=id<cohorts.初三?0:id<cohorts.初三+cohorts.高一?12:24;
   for(let day=0;day<priorRounds&&!state.ended;day++){
    // Prior learning must alternate ordinary identity budgets too.
-   if(state.identityRulesVersion===3)state.week=day+1;
+   if(state.identityRulesVersion>=3)state.week=day+1;
    for(const action of profile?referencePlan(state,random,'balanced',profile):randomPlan(state,random)){performAction(state,action,random,1,false);if(state.ended)break;}
    if(!state.ended)settleDailyStats(state);
    state.log=[];
@@ -162,12 +162,12 @@ function calibrateGrades(player,onProgress){
   // Prior learning establishes grade differences; current-world events start on day 1.
   for(let day=0;day<priorRounds&&!state.ended;day++){
    // Prior learning must alternate ordinary identity budgets too.
-   if(state.identityRulesVersion===3)state.week=day+1;
+   if(state.identityRulesVersion>=3)state.week=day+1;
    for(const action of randomPlan(state,random)){performAction(state,action,random,1,false);if(state.ended)break;}
    if(!state.ended)settleDailyStats(state);
    state.log=[];
   }
-  if(state.identityRulesVersion===3)state.week=1;
+  if(state.identityRulesVersion>=3)state.week=1;
   state.eventPlan=player.eventPlan;
   return {id,state,random,pre:null,semi:null,final:null,priorRounds};
  });

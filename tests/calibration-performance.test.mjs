@@ -4,7 +4,7 @@ import {createGame,createEventPlan,markReferenceState,advance,choose,canChoose,s
 import {referencePlan,referenceProfile,referenceGoal} from '../reference-policy.js';
 import {seededRandom} from '../random.js';
 
-const rules={calendarVersion:3,attributeRulesVersion:2,balanceVersion:2,jiahaoVersion:1,examMoodVersion:1,identityRulesVersion:3,actionRulesVersion:3};
+const rules={calendarVersion:3,attributeRulesVersion:2,balanceVersion:2,jiahaoVersion:1,examMoodVersion:1,identityRulesVersion:4,actionRulesVersion:3};
 const freeze=value=>{if(value&&typeof value==='object'){Object.freeze(value);for(const child of Object.values(value))freeze(child);}return value;};
 const gameplay=state=>{const {log,activityNotices,...rest}=state;return rest;};
 
@@ -42,7 +42,7 @@ test('收益缓存随身份、规则、权威增益生效及结束、天赋改�
  };
  compare();state.stats.mood=90;state.stats.lab=0;compare();
  state.authorityBuff={start:2,end:6};compare();state.week=2;compare();state.week=7;compare();
- for(const identity of ['elite','prodigy','ordinary']){state.identity=identity;compare();state.identityRulesVersion=1;compare();state.identityRulesVersion=2;compare();state.identityRulesVersion=3;compare();}
+ for(const identity of ['elite','prodigy','ordinary']){state.identity=identity;compare();state.identityRulesVersion=1;compare();state.identityRulesVersion=2;compare();state.identityRulesVersion=3;compare();state.identityRulesVersion=4;compare();}
  delete state.actionRulesVersion;compare();state.actionRulesVersion=2;compare();state.actionRulesVersion=3;compare();
  delete state.balanceVersion;compare();state.balanceVersion=2;compare();
  state.talents=['master','crash','headstart','jiahao'];compare();state.week=20;compare();state.talents=[];compare();

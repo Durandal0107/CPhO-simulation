@@ -9,10 +9,10 @@ for(let i=0;i<actions.length;i++)for(const [key,value]of Object.entries(original
 const s=createGame('测试',['intuition','calm']);advance(s,['lab'],()=>0);assert.ok(Math.abs(s.stats.lab-(10+10/3*1.15))<1e-10);assert.equal(s.stats.mood,85);
 });
 
-test('每天包括最后一天都有事件，事件处理完才进入下一天或结局',()=>{
- const s=createGame('测试',['calm','hands']);Object.assign(s.stats,{mechanics:90,electro:90,thermal:90,optics:90,modern:90,lab:90});
+test('未进入集训队时每天包括最后一天都有事件，处理完才推进',()=>{
+ const s=createGame('测试',['calm','hands']);Object.assign(s.stats,{mechanics:85,electro:85,thermal:85,optics:85,modern:85,lab:85});
  for(let day=1;day<=24;day++){
-  assert.equal(s.week,day);advance(s,['rest'],()=>0);
+  assert.equal(s.week,day);for(const key of ['mechanics','electro','thermal','optics','modern','lab'])s.stats[key]=85;advance(s,['rest'],()=>0);
   assert.equal(s.pending.day,day);assert.equal(s.ended,false);
   assert.ok(s.pending.choices.every(c=>Object.values(c.gain).some(v=>v!==0)));
   assert.throws(()=>advance(s,['rest']));choose(s,0);

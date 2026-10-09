@@ -12,6 +12,10 @@ export const theoryKeys=['mechanics','electro','thermal','optics','modern'];
 export const physicalKeys=[...theoryKeys,'lab'];
 // 活动收益按基础值缩放；保留分数精度，避免小收益被取整吞掉。
 const statLabels={mechanics:'力学',electro:'电磁学',thermal:'热学',optics:'光学',modern:'近代物理',lab:'实验',school:'文化课',mood:'心态'};
+// Runtime-only marker: reference actors use the same rules without presentation records.
+// It is deliberately absent from serialized player saves.
+const referenceStates=new WeakSet();
+export function markReferenceState(state){referenceStates.add(state);return state;}
 export const formatStat=value=>Number(value.toFixed(2)).toString();
 for(const action of actions){
   for(const key of Object.keys(action.gain)){
@@ -75,7 +79,9 @@ export function dailyEvent(state,random=Math.random){
  const slot=state.eventPlan?.[state.week-1];
  if(!slot)return randomEvent(state,random);
  const ready=slot.condition==='single'?(!state.relationship&&(state.romanceCooldown||0)===0):slot.condition==='dating'?state.relationship:slot.condition==='breakup'?(state.relationship&&state.week-(state.relationshipSince||1)>=3):true;
- return JSON.parse(JSON.stringify({... (ready?slot.primary:slot.fallback),day:state.week}));
+ const event={...(ready?slot.primary:slot.fallback),day:state.week};
+ // Reference actors only read choices; players retain their own editable copy.
+ return referenceStates.has(state)?event:JSON.parse(JSON.stringify(event));
 }
 export function createEventPlan(state,seed){
  const virtual=JSON.parse(JSON.stringify(state));const plan=[];
@@ -125,17 +131,17 @@ export function beginDay(state,random=Math.random){
  if(state.attributeRulesVersion===1)state.activityNotices=[];
  delete state.examNotice;
  state.dailyPenalty=0;
- if(state.talents.includes('lost')&&random()<(state.lostProbability??.1)){state.dailyPenalty=2;state.stats.mood=clamp(state.stats.mood+5);state.log.unshift({week:state.week,text:'迷失：沉迷电子世界，今天行动点−2、心态 +5。'});}
+ if(state.talents.includes('lost')&&random()<(state.lostProbability??.1)){state.dailyPenalty=2;state.stats.mood=clamp(state.stats.mood+5);if(!referenceStates.has(state))state.log.unshift({week:state.week,text:'迷失：沉迷电子世界，今天行动点−2、心态 +5。'});}
 }
 export const authorityBuffDays=state=>state.authorityBuff&&state.week>=state.authorityBuff.start&&state.week<=state.authorityBuff.end?state.authorityBuff.end-state.week+1:0;
 export function effectiveGain(state,gain,learning=false,random=null,judgement=null){
  const physical=physicalKeys;const out={};
- for(const [key,base]of Object.entries(gain)){
-  let value=base;
+ for(const key of Object.keys(gain)){
+  let value=gain[key];
   if(learning&&random&&state.talents.includes('chaos'))value+=Math.min(8,Math.floor(random()*9))-5;
   if(learning&&state.actionRulesVersion===2&&key==='mood'&&value<0)value*=.5;
   if(value>0){
-   if(learning&&[...physicalKeys,'school'].includes(key))value*=state.identity==='elite'?(state.identityRulesVersion===2?1.1:1.2):state.identity==='prodigy'?(state.identityRulesVersion===2?1.05:1.15):1;
+   if(learning&&(physical.includes(key)||key==='school'))value*=state.identity==='elite'?(state.identityRulesVersion===2?1.1:1.2):state.identity==='prodigy'?(state.identityRulesVersion===2?1.05:1.15):1;
    if(authorityBuffDays(state)>0)value*=2;
    if(state.talents.includes('crash'))value*=state.crashVersion===2?1.5:1.25;
    if(state.talents.includes('headstart')){const rates=state.headstartMultipliers??[.5,.8];value*=rates[state.week<=prepDays(state)?0:1];}
@@ -167,7 +173,8 @@ export function checkGameOver(state){
 export function applyGain(state,gain,learning=false,random=null,judgement=null){
  if(state.ended)return {};
  const actual=effectiveGain(state,gain,learning,random,judgement);
- for(const [key,value]of Object.entries(actual)){
+ for(const key of Object.keys(actual)){
+  const value=actual[key];
   if(key==='wealth')state.stats[key]=Math.max(0,(state.stats[key]||0)+value);
   else state.stats[key]=clamp((state.stats[key]||0)+value);
  }
@@ -212,7 +219,7 @@ export function settleExamMood(state,result){
  result.moodEffect=effect;
  state.stats.mood=clamp(state.stats.mood+effect);
  result.moodAfterExam=state.stats.mood;
- state.log.unshift({week:state.week,text:`${result.stage}${result.pass?'晋级':'未晋级'}：心态 ${effect>=0?'+':''}${effect}（${formatStat(result.moodAtExam)} → ${formatStat(result.moodAfterExam)}）。`});
+ if(!referenceStates.has(state))state.log.unshift({week:state.week,text:`${result.stage}${result.pass?'晋级':'未晋级'}：心态 ${effect>=0?'+':''}${effect}（${formatStat(result.moodAtExam)} → ${formatStat(result.moodAfterExam)}）。`});
  checkGameOver(state);
 }
 export function rollActivityJudgement(state,random=Math.random){
@@ -224,7 +231,8 @@ export function rollActivityJudgement(state,random=Math.random){
 export function performAction(state,id,random=Math.random,sequence=1,record=true){
  const action=actions.find(a=>a.id===id);if(!action)throw Error('未知行动');
  if(state.ended)return {};
- const moodAtAction=state.stats.mood,before={...state.stats};
+ record=record&&!referenceStates.has(state);
+ const moodAtAction=state.stats.mood,before=record?{...state.stats}:null;
  const judgement=rollActivityJudgement(state,random);
  const gain=applyGain(state,action.gain,true,random,judgement);
  if(judgement&&record){
@@ -241,28 +249,28 @@ export function settleDailyStats(state){
  if(state.attributeRulesVersion===1){
   const school=state.stats.school,beforePopularity=state.stats.popularity;
   state.stats.popularity=clamp(beforePopularity+(school-50)*.05);
-  state.log.unshift({week:state.week,text:`文化课影响人缘：${school}分，人缘 ${formatStat(state.stats.popularity-beforePopularity)}。`});
+  if(!referenceStates.has(state))state.log.unshift({week:state.week,text:`文化课影响人缘：${school}分，人缘 ${formatStat(state.stats.popularity-beforePopularity)}。`});
   const mood=school<30?-1:school>60?1:0;
-  if(mood){state.stats.mood=clamp(state.stats.mood+mood);state.log.unshift({week:state.week,text:school<30?'焦虑：文化课低于30，心态 −1。':'自在：文化课高于60，心态 +1。'});}
+  if(mood){state.stats.mood=clamp(state.stats.mood+mood);if(!referenceStates.has(state))state.log.unshift({week:state.week,text:school<30?'焦虑：文化课低于30，心态 −1。':'自在：文化课高于60，心态 +1。'});}
   if(checkGameOver(state))return;
  }
  state.stats.mood=clamp(state.stats.mood+3+(state.talents.includes('optimist')?5:0));
- state.log.unshift({week:state.week,text:'每日自然恢复：心态 +3。'+(state.talents.includes('optimist')?'乐天派额外心态 +5。':'')});
+ if(!referenceStates.has(state))state.log.unshift({week:state.week,text:'每日自然恢复：心态 +3。'+(state.talents.includes('optimist')?'乐天派额外心态 +5。':'')});
 }
 export function advance(state,plan,random=Math.random,options={}){
   if(state.ended||state.pending)throw Error('当前无法推进');
   const cost=plan.reduce((sum,id)=>{const action=actions.find(a=>a.id===id);if(!action)throw Error('未知行动');return sum+action.cost;},0);
   if(!plan.length||cost>budget(state))throw Error('行动点不足或计划为空');
-  const changes={};if(state.attributeRulesVersion===1)state.activityNotices=[];
-  for(const [index,id]of plan.entries()){const gain=performAction(state,id,random,index+1);for(const [key,value]of Object.entries(gain))changes[key]=(changes[key]||0)+value;if(state.ended)return null;}
+  const record=!referenceStates.has(state),changes={};if(state.attributeRulesVersion===1)state.activityNotices=[];
+  for(const [index,id]of plan.entries()){const gain=performAction(state,id,random,index+1);if(record)for(const [key,value]of Object.entries(gain))changes[key]=(changes[key]||0)+value;if(state.ended)return null;}
   settleDailyStats(state);
   if(state.ended)return null;
-  if(state.relationship){const gain=applyGain(state,{mood:romanceRecovery(state)});state.log.unshift({week:state.week,text:`恋爱日常：固定占用1行动点，心态 +${formatStat(gain.mood)}。`});}
+  if(state.relationship){const gain=applyGain(state,{mood:romanceRecovery(state)});if(!referenceStates.has(state))state.log.unshift({week:state.week,text:`恋爱日常：固定占用1行动点，心态 +${formatStat(gain.mood)}。`});}
   if(state.romanceCooldown>0)state.romanceCooldown--;
-  state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')+(state.version===2?'（行动结算：'+Object.entries(changes).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+')':'')});
+  if(!referenceStates.has(state))state.log.unshift({week:state.week,text:plan.map(id=>actions.find(a=>a.id===id).name).join('、')+(state.version===2?'（行动结算：'+Object.entries(changes).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+')':'')});
   let result=null;
-  if([8,16,24].includes(examDay(state))&&state.route){result=exam(state,random,options);state.log.unshift({week:state.week,text:`${result.grade?result.grade+' · ':''}${result.stage}：${result.score} 分，${result.title}。`});if(state.ended)return result;if(!result.pass&&examDay(state)!==24&&!options.deferQualification){if(checkElimination(state))return result;}}
-  if(state.talents.includes('wealthy')&&state.week%7===0){state.stats.wealth*=2;state.stats.popularity=clamp(state.stats.popularity+1);state.log.unshift({week:state.week,text:'家财万贯：财富翻倍，人缘 +1。'});}
+  if([8,16,24].includes(examDay(state))&&state.route){result=exam(state,random,options);if(!referenceStates.has(state))state.log.unshift({week:state.week,text:`${result.grade?result.grade+' · ':''}${result.stage}：${result.score} 分，${result.title}。`});if(state.ended)return result;if(!result.pass&&examDay(state)!==24&&!options.deferQualification){if(checkElimination(state))return result;}}
+  if(state.talents.includes('wealthy')&&state.week%7===0){state.stats.wealth*=2;state.stats.popularity=clamp(state.stats.popularity+1);if(!referenceStates.has(state))state.log.unshift({week:state.week,text:'家财万贯：财富翻倍，人缘 +1。'});}
   state.pending=dailyEvent(state,random);
   state.lastEvent=state.pending.id;
   return result;
@@ -274,14 +282,14 @@ export function choose(state,index,random=Math.random){
   const actual=applyGain(state,choice.gain);
   if(!state.ended&&choice.authorityBoost===5){
    const start=state.week+1;state.authorityBuff={start,end:start+4};
-   state.log.unshift({week:state.week,text:`权威宣言：保持单身，第${start}至${start+4}回合正收益×2。`});
+   if(!referenceStates.has(state))state.log.unshift({week:state.week,text:`权威宣言：保持单身，第${start}至${start+4}回合正收益×2。`});
   }
   if(typeof choice.relationship==='boolean'){
     state.relationship=choice.relationship;
     state.relationshipSince=choice.relationship?(event.day||state.week):null;
     if(!choice.relationship)state.romanceCooldown=4;
   }
-  state.log.unshift({week:event.day||state.week,text:choice.result+(state.version===2?'（'+Object.entries(actual).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+'）':'')});
+  if(!referenceStates.has(state))state.log.unshift({week:event.day||state.week,text:choice.result+(state.version===2?'（'+Object.entries(actual).map(([key,value])=>`${statNames[key]} ${value>=0?'+':''}${formatStat(value)}`).join(' · ')+'）':'')});
   state.pending=null;
   if(state.ended)return;
   if(event.day){if(state.week===totalDays(state))state.ended=true;else{state.week++;if(state.calendarVersion===3&&gradeRound(state)===1)state.route=true;beginDay(state,random);}}

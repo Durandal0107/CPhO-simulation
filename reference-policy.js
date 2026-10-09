@@ -1,4 +1,4 @@
-import {actions,budget,canChoose,effectiveGain,gradeRound,physicalKeys} from './game.js';
+import {actions,authorityBuffDays,budget,canChoose,effectiveGain,gradeRound,physicalKeys} from './game.js';
 
 export function referenceProfile(random){
  return {moodReserve:50+random()*15,schoolFloor:random()<.25?30:0,focus:Object.fromEntries(physicalKeys.map(key=>[key,.85+random()*.3]))};
@@ -7,31 +7,52 @@ export function referenceGoal(state){return gradeRound(state)<=8?'preliminary':g
 const weights=goal=>goal==='preliminary'?{mechanics:1.12,electro:1.12,thermal:.48,optics:.48,modern:0,lab:0}:{mechanics:.8,electro:.8,thermal:.6,optics:.6,modern:.4,lab:.8};
 const clamp=value=>Math.max(0,Math.min(100,value));
 
+const planningCache=new WeakMap();
+function planningCandidates(state){
+ // Calibration actors have no talents. Their projected action gains depend only
+ // on identity, rule versions and whether the temporary authority buff is active.
+ // Talent-bearing callers always use the general rule engine.
+ const cacheable=state.talents.length===0;
+ const signature=cacheable?`${state.identity}/${state.identityRulesVersion}/${state.actionRulesVersion}/${state.balanceVersion}/${authorityBuffDays(state)>0}`:null;
+ const cached=cacheable?planningCache.get(state):null;
+ if(cached?.signature===signature)return cached.candidates;
+ const candidates=actions.map(action=>{
+  const gain=effectiveGain(state,action.gain,true);
+  return {action,gain,entries:Object.entries(gain)};
+ });
+ if(cacheable)planningCache.set(state,{signature,candidates});
+ return candidates;
+}
+
 export function referencePlan(state,random,goal,profile){
- const projected={...state,stats:{...state.stats}},plan=[],importance=weights(goal);
- const gains=new Map(actions.map(action=>[action,effectiveGain(state,action.gain,true)]));
+ const projected={...state.stats},plan=[],importance=weights(goal);
+ // Compute entries once per day, instead of allocating them for every candidate
+ // at every action point. Keep candidate/key order and random draws unchanged.
+ const candidates=planningCandidates(state);
+ const rest=candidates.find(c=>c.action.id==='rest'),school=candidates.find(c=>c.action.id==='school');
  let remaining=budget(state);
  while(remaining>0){
-  const affordable=actions.filter(a=>a.cost<=remaining);
-  const resting=projected.stats.mood<profile.moodReserve;
-  const catchingUp=projected.stats.school<profile.schoolFloor&&projected.stats.mood>profile.moodReserve+3;
-  let chosen=affordable.find(a=>a.id===(resting?'rest':catchingUp?'school':''));
+  const resting=projected.mood<profile.moodReserve;
+  const catchingUp=projected.school<profile.schoolFloor&&projected.mood>profile.moodReserve+3;
+  let chosen=resting?rest:catchingUp?school:null;
+  if(chosen?.action.cost>remaining)chosen=null;
   if(!chosen){
    let best=-Infinity;
-   for(const action of affordable){
-    const gain=gains.get(action);
-    if(projected.stats.mood+(gain.mood||0)<profile.moodReserve&&action.id!=='rest')continue;
+   for(const candidate of candidates){
+    const {action,gain,entries}=candidate;
+    if(action.cost>remaining)continue;
+    if(projected.mood+(gain.mood||0)<profile.moodReserve&&action.id!=='rest')continue;
     let score=0;
-    for(const [key,value]of Object.entries(gain))if(importance[key])score+=importance[key]*Math.min(100-projected.stats[key],value)*profile.focus[key]*(1+.5*(1-projected.stats[key]/100));
+    for(const [key,value]of entries)if(importance[key])score+=importance[key]*Math.min(100-projected[key],value)*profile.focus[key]*(1+.5*(1-projected[key]/100));
     if(action.id==='rest')score=.08;
     if(action.id==='school')score=.02;
     score=score/action.cost*(.9+random()*.2);
-    if(score>best){best=score;chosen=action;}
+    if(score>best){best=score;chosen=candidate;}
    }
   }
-  chosen??=affordable.find(a=>a.id==='rest');
-  plan.push(chosen.id);remaining-=chosen.cost;
-  for(const [key,value]of Object.entries(gains.get(chosen)))projected.stats[key]=clamp(projected.stats[key]+value);
+  chosen??=rest;
+  plan.push(chosen.action.id);remaining-=chosen.action.cost;
+  for(const [key,value]of chosen.entries)projected[key]=clamp(projected[key]+value);
  }
  return plan;
 }

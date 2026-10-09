@@ -1,4 +1,4 @@
-import {createGame,createEventPlan,advance,choose,budget,actions,canChoose,competitionDay,prepDays,totalDays,gradeRound,gradeName,performAction,settleDailyStats,settleExamMood} from './game.js';
+import {markReferenceState,createGame,createEventPlan,advance,choose,budget,actions,canChoose,competitionDay,prepDays,totalDays,gradeRound,gradeName,performAction,settleDailyStats,settleExamMood} from './game.js';
 import {identities} from './identities.js';
 import {seededRandom} from './random.js';
 import {referenceProfile,referenceGoal,referencePlan,referenceChoice} from './reference-policy.js';
@@ -11,6 +11,7 @@ export function calibrateRun(player,onProgress=()=>{}){
  const runs=Array.from({length:sampleSize},(_,id)=>{
   const identity=identities[Math.floor(random()*identities.length)].key;
   const state=createGame('模拟',['grinder','lost'],()=>.9,identity,{identityRulesVersion:player.identityRulesVersion??1,actionRulesVersion:player.actionRulesVersion});
+  markReferenceState(state);
   state.talents=[];state.dailyPenalty=0;state.log=[];state.calendarPrep=prepDays(player);
   state.eventPlan=player.eventPlan;
   return {id,state,pre:null,semi:null,final:null};
@@ -83,6 +84,7 @@ function calibrateCompetition(player,startDay,stageIndex,onProgress){
  const runs=Array.from({length:sampleSize},(_,id)=>{
   const random=seededRandom((poolSeed^Math.imul(id+1,0x9e3779b1))>>>0);
   const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion,balanceVersion:player.balanceVersion,jiahaoVersion:player.jiahaoVersion,examMoodVersion:player.examMoodVersion,identityRulesVersion:player.identityRulesVersion??1,actionRulesVersion:player.actionRulesVersion});
+  markReferenceState(state);
   state.talents=[];state.dailyPenalty=0;state.calendarPrep=prepDays(player);
   const profile=player.referencePolicyVersion===1?referenceProfile(random):null;
   const priorRounds=id<cohorts.初三?0:id<cohorts.初三+cohorts.高一?12:24;
@@ -152,6 +154,7 @@ function calibrateGrades(player,onProgress){
  const runs=Array.from({length:sampleSize},(_,id)=>{
   const random=seededRandom((player.worldSeed^Math.imul(id+1,0x9e3779b1))>>>0);
   const state=createGame('模拟',['grinder','lost'],()=>.9,identities[Math.floor(random()*identities.length)].key,{calendarVersion:3,attributeRulesVersion:player.attributeRulesVersion,balanceVersion:player.balanceVersion,jiahaoVersion:player.jiahaoVersion,identityRulesVersion:player.identityRulesVersion??1,actionRulesVersion:player.actionRulesVersion});
+  markReferenceState(state);
   state.talents=[];state.dailyPenalty=0;state.log=[];state.calendarPrep=prepDays(player);
   const priorRounds=id<cohorts.初三?0:id<cohorts.初三+cohorts.高一?12:24;
   // Prior learning establishes grade differences; current-world events start on day 1.

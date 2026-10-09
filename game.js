@@ -121,14 +121,14 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  if(options.jiahaoVersion===1)state.jiahaoVersion=1;
  if(options.balanceVersion===2)state.balanceVersion=2;
  if(options.calendarVersion===3)state.calendarVersion=3;
- if(options.attributeRulesVersion===1){state.attributeRulesVersion=1;state.activityNotices=[];}
+ if([1,2].includes(options.attributeRulesVersion)){state.attributeRulesVersion=options.attributeRulesVersion;state.activityNotices=[];}
  if(selected.includes('headstart')){state.calendarPrep=12;state.headstartMultipliers=[.7,.9];}
  if(!legacy){state.stats.wealth=100;state.stats.popularity=10-(selected.includes('jiahao')?2:0);state.dailyPenalty=0;beginDay(state,random);}
  return state;
 }
 export function beginDay(state,random=Math.random){
  if(state.authorityBuff&&state.week>state.authorityBuff.end)delete state.authorityBuff;
- if(state.attributeRulesVersion===1)state.activityNotices=[];
+ if(state.attributeRulesVersion>=1)state.activityNotices=[];
  delete state.examNotice;
  state.dailyPenalty=0;
  if(state.talents.includes('lost')&&random()<(state.lostProbability??.1)){state.dailyPenalty=2;state.stats.mood=clamp(state.stats.mood+5);if(!referenceStates.has(state))state.log.unshift({week:state.week,text:'迷失：沉迷电子世界，今天行动点−2、心态 +5。'});}
@@ -224,7 +224,7 @@ export function settleExamMood(state,result){
  checkGameOver(state);
 }
 export function rollActivityJudgement(state,random=Math.random){
- if(state.attributeRulesVersion!==1)return null;
+ if(![1,2].includes(state.attributeRulesVersion))return null;
  if(state.stats.mood<25)return random()<.5?'failure':null;
  if(state.stats.mood>75)return random()<.25?'success':null;
  return null;
@@ -247,12 +247,13 @@ export function settleDailyStats(state){
  if(state.ended)return;
  applyGain(state,{school:-3});
  if(state.ended)return;
- if(state.attributeRulesVersion===1){
+ if(state.attributeRulesVersion>=1){
   const school=state.stats.school,beforePopularity=state.stats.popularity;
   state.stats.popularity=clamp(beforePopularity+(school-50)*.05);
   if(!referenceStates.has(state))state.log.unshift({week:state.week,text:`文化课影响人缘：${school}分，人缘 ${formatStat(state.stats.popularity-beforePopularity)}。`});
-  const mood=school<30?-1:school>60?1:0;
-  if(mood){state.stats.mood=clamp(state.stats.mood+mood);if(!referenceStates.has(state))state.log.unshift({week:state.week,text:school<30?'焦虑：文化课低于30，心态 −1。':'自在：文化课高于60，心态 +1。'});}
+  const threshold=state.attributeRulesVersion===2?70:60,amount=state.attributeRulesVersion===2?2:1;
+  const mood=school<30?-amount:school>threshold?amount:0;
+  if(mood){state.stats.mood=clamp(state.stats.mood+mood);if(!referenceStates.has(state))state.log.unshift({week:state.week,text:school<30?`焦虑：文化课低于30，心态 −${amount}。`:`自在：文化课高于${threshold}，心态 +${amount}。`});}
   if(checkGameOver(state))return;
  }
  state.stats.mood=clamp(state.stats.mood+3+(state.talents.includes('optimist')?5:0));
@@ -262,7 +263,7 @@ export function advance(state,plan,random=Math.random,options={}){
   if(state.ended||state.pending)throw Error('当前无法推进');
   const cost=plan.reduce((sum,id)=>{const action=actions.find(a=>a.id===id);if(!action)throw Error('未知行动');return sum+action.cost;},0);
   if(!plan.length||cost>budget(state))throw Error('行动点不足或计划为空');
-  const record=!referenceStates.has(state),changes={};if(state.attributeRulesVersion===1)state.activityNotices=[];
+  const record=!referenceStates.has(state),changes={};if(state.attributeRulesVersion>=1)state.activityNotices=[];
   for(const [index,id]of plan.entries()){const gain=performAction(state,id,random,index+1);if(record)for(const [key,value]of Object.entries(gain))changes[key]=(changes[key]||0)+value;if(state.ended)return null;}
   settleDailyStats(state);
   if(state.ended)return null;

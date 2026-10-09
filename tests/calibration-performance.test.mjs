@@ -4,7 +4,7 @@ import {createGame,createEventPlan,markReferenceState,advance,choose,canChoose,s
 import {referencePlan,referenceProfile,referenceGoal} from '../reference-policy.js';
 import {seededRandom} from '../random.js';
 
-const rules={calendarVersion:3,attributeRulesVersion:1,balanceVersion:2,jiahaoVersion:1,examMoodVersion:1,identityRulesVersion:3,actionRulesVersion:3};
+const rules={calendarVersion:3,attributeRulesVersion:2,balanceVersion:2,jiahaoVersion:1,examMoodVersion:1,identityRulesVersion:3,actionRulesVersion:3};
 const freeze=value=>{if(value&&typeof value==='object'){Object.freeze(value);for(const child of Object.values(value))freeze(child);}return value;};
 const gameplay=state=>{const {log,activityNotices,...rest}=state;return rest;};
 

@@ -39,7 +39,34 @@ test('判定弹窗可续存，下一天清除；非法弹窗记录及考试索�
  choose(s,1,()=>.9);assert.deepEqual(s.activityNotices,[]);assert.ok(validSave(s));
 });
 test('新局和10000次校准使用相同属性规则；旧存档保持原规则',()=>{
- const config={name:'测试',talents:['grinder','lost'],identity:'ordinary',seed:42};const s=createCalibratedGame(config);assert.equal(s.attributeRulesVersion,1);assert.equal(s.calibration.attributeRulesVersion,1);assert.deepEqual(s,createCalibratedGame(config));assert.ok(validSave(s));
+ const config={name:'测试',talents:['grinder','lost'],identity:'ordinary',seed:42};const s=createCalibratedGame(config);assert.equal(s.attributeRulesVersion,2);assert.equal(s.calibration.attributeRulesVersion,2);assert.deepEqual(s,createCalibratedGame(config));assert.ok(validSave(s));
  const broken=JSON.parse(JSON.stringify(s));delete broken.calibration.attributeRulesVersion;assert.equal(validSave(broken),false);
  const old=createGame('旧局',['grinder','lost'],()=>.9);old.stats.mood=80;advance(old,['rest'],()=>0);assert.equal(old.stats.mood,85);assert.equal(old.stats.popularity,10);assert.equal(old.activityNotices,undefined);
+});
+
+const revised=(talents=['grinder','lost'],identity=null)=>createGame('文化课新规则',talents,()=>.9,identity,{attributeRulesVersion:2,identityRulesVersion:3,actionRulesVersion:3,balanceVersion:2,jiahaoVersion:1});
+test('新版文化课严格使用30和70门槛，固定心态±2，人缘公式及上下限不变',()=>{
+ for(const [before,mood]of [[32,51],[33,53],[63,53],[73,53],[74,55]]){
+  const s=revised();s.stats.school=before;s.stats.mood=50;settleDailyStats(s);
+  assert.equal(s.stats.school,before-3);assert.equal(s.stats.mood,mood);
+  near(s.stats.popularity,10+(before-3-50)*.05);
+  const text=s.log.map(x=>x.text);
+  assert.equal(text.includes('焦虑：文化课低于30，心态 −2。'),before<33);
+  assert.equal(text.includes('自在：文化课高于70，心态 +2。'),before>73);
+ }
+ const low=revised();low.stats.school=0;low.stats.popularity=1;settleDailyStats(low);assert.equal(low.stats.popularity,0);
+ const high=revised();high.stats.school=100;high.stats.popularity=99.9;high.stats.mood=99;settleDailyStats(high);assert.equal(high.stats.popularity,100);assert.equal(high.stats.mood,100);
+});
+test('新版文化课固定变化不叠加身份天赋和权威，焦虑归零立即结束',()=>{
+ const s=revised(['grinder','crash','headstart','jiahao'],'elite');s.week=2;s.authorityBuff={start:2,end:6};
+ s.stats.school=32;s.stats.mood=50;settleDailyStats(s);assert.equal(s.stats.mood,51);
+ s.stats.school=74;s.stats.mood=50;settleDailyStats(s);assert.equal(s.stats.mood,55);
+ const fatal=revised();fatal.stats.school=20;fatal.stats.mood=2;settleDailyStats(fatal);assert.equal(fatal.stats.mood,0);assert.equal(fatal.endReason,'mood');assert.ok(!fatal.log.some(x=>x.text.startsWith('每日自然恢复')));
+});
+test('新版继续活动成功／失败判定和存档恢复，旧版保持原60门槛及±1',()=>{
+ const fresh=revised();fresh.stats.mood=80;performAction(fresh,'mechanics',()=>0);
+ assert.equal(fresh.activityNotices[0].judgement,'success');near(fresh.stats.mechanics,20);assert.ok(validSave(fresh));assert.deepEqual(migrateSave(fresh),fresh);
+ const failed=revised();failed.stats.mood=20;performAction(failed,'mechanics',()=>0);assert.equal(failed.activityNotices[0].judgement,'failure');near(failed.stats.mechanics,18.5);
+ const old=make();old.stats.school=64;old.stats.mood=50;settleDailyStats(old);assert.equal(old.stats.mood,54);assert.ok(validSave(old));
+ fresh.attributeRulesVersion=3;assert.equal(validSave(fresh),false);
 });

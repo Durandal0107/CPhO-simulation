@@ -58,8 +58,8 @@ function validAttributeRules(s){
  if(s.authorityBuff!==undefined&&(s.jiahaoVersion!==1||!s.authorityBuff||!Number.isInteger(s.authorityBuff.start)||s.authorityBuff.start<2||!Number.isInteger(s.authorityBuff.end)||s.authorityBuff.end!==s.authorityBuff.start+4||s.authorityBuff.end>totalDays(s)+5))return false;
  if(s.balanceVersion!==undefined&&s.balanceVersion!==2)return false;
  if(s.balanceVersion===2&&s.calibration&&s.calibration.balanceVersion!==2)return false;
- if(s.attributeRulesVersion!==undefined&&s.attributeRulesVersion!==1)return false;
- if(s.attributeRulesVersion===1&&s.calibration&&s.calibration.attributeRulesVersion!==1)return false;
+ if(s.attributeRulesVersion!==undefined&&![1,2].includes(s.attributeRulesVersion))return false;
+ if(s.attributeRulesVersion!==undefined&&s.calibration&&s.calibration.attributeRulesVersion!==s.attributeRulesVersion)return false;
  if(s.examNotice!==undefined&&(!Number.isInteger(s.examNotice)||s.examNotice<0||s.examNotice>=s.medals.length))return false;
  return s.activityNotices===undefined||(Array.isArray(s.activityNotices)&&s.activityNotices.length<=9&&s.activityNotices.every(n=>n&&actions.some(a=>a.id===n.actionId)&&Number.isInteger(n.sequence)&&n.sequence>=1&&n.sequence<=9&&n.week===s.week&&['success','failure'].includes(n.judgement)&&Number.isFinite(n.moodAtAction)&&n.moodAtAction>=0&&n.moodAtAction<=100&&(n.judgement==='failure'?n.moodAtAction<25:n.moodAtAction>75)&&n.gain&&Object.entries(n.gain).every(([k,v])=>keys.includes(k)&&Number.isFinite(v))));
 }

@@ -42,7 +42,7 @@ export function calibrateRun(player,onProgress=()=>{}){
  return {sampleSize,qualificationRatio,...(player.actionRulesVersion!==undefined?{actionRulesVersion:player.actionRulesVersion}:{}),...(player.identityRulesVersion!==undefined?{identityRulesVersion:player.identityRulesVersion}:{}),...(player.cutoffRulesVersion===2?{cutoffRulesVersion:2}:{}),worldSeed:player.worldSeed,semifinalists:semifinalists.length,finalists:finalists.length,actualPreExams:eligible(runs,'pre').length,actualSemiExams:eligible(semifinalists,'semi').length,actualFinalExams:eligible(finalists,'final').length,cutoffs};
 }
 export function createCalibratedGame({name,talents,identity,seed},onProgress){
- const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:1,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2,independentPoolsVersion:1,referencePolicyVersion:1,examMoodVersion:1,identityRulesVersion:3,actionRulesVersion:3});
+ const state=createGame(name,talents,seededRandom(seed^0x76543210),identity,{calendarVersion:3,attributeRulesVersion:2,balanceVersion:2,jiahaoVersion:1,cutoffRulesVersion:2,independentPoolsVersion:1,referencePolicyVersion:1,examMoodVersion:1,identityRulesVersion:3,actionRulesVersion:3});
  state.worldSeed=seed>>>0;state.eventPlan=createEventPlan(state,state.worldSeed);
  state.calibration=calibrateRun(state,onProgress);
  state.runCutoffs=state.calibration.cutoffs;
@@ -147,7 +147,7 @@ function calibrateIndependentGrades(player,onProgress){
    cutoffs:{preliminary:preliminary.cutoffs.preliminary,semifinal:semifinal.cutoffs.semifinal,training:final.cutoffs.training,gold:final.cutoffs.gold,silver:final.cutoffs.silver}});
  }
  return {sampleSize,qualificationRatio,...(player.actionRulesVersion!==undefined?{actionRulesVersion:player.actionRulesVersion}:{}),...(player.identityRulesVersion!==undefined?{identityRulesVersion:player.identityRulesVersion}:{}),cutoffRulesVersion:player.cutoffRulesVersion,independentPoolsVersion:1,...(player.referencePolicyVersion===1?{referencePolicyVersion:1}:{}),...(player.examMoodVersion===1?{examMoodVersion:1}:{}),competitionCount,totalSimulations:competitionCount*sampleSize,initialLearningRounds:{初三:0,高一:12,高二:24},
-  worldSeed:player.worldSeed,...(player.jiahaoVersion===1?{jiahaoVersion:1}:{}),...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion===1?{attributeRulesVersion:1}:{}),cohorts:years[0].cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
+  worldSeed:player.worldSeed,...(player.jiahaoVersion===1?{jiahaoVersion:1}:{}),...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion!==undefined?{attributeRulesVersion:player.attributeRulesVersion}:{}),cohorts:years[0].cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
 }
 
 function calibrateGrades(player,onProgress){
@@ -197,5 +197,5 @@ function calibrateGrades(player,onProgress){
   }
   onProgress(Math.floor(day/totalDays(player)*100));
  }
- return {sampleSize,qualificationRatio,...(player.actionRulesVersion!==undefined?{actionRulesVersion:player.actionRulesVersion}:{}),...(player.identityRulesVersion!==undefined?{identityRulesVersion:player.identityRulesVersion}:{}),...(player.cutoffRulesVersion===2?{cutoffRulesVersion:2}:{}),worldSeed:player.worldSeed,...(player.jiahaoVersion===1?{jiahaoVersion:1}:{}),...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion===1?{attributeRulesVersion:1}:{}),cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
+ return {sampleSize,qualificationRatio,...(player.actionRulesVersion!==undefined?{actionRulesVersion:player.actionRulesVersion}:{}),...(player.identityRulesVersion!==undefined?{identityRulesVersion:player.identityRulesVersion}:{}),...(player.cutoffRulesVersion===2?{cutoffRulesVersion:2}:{}),worldSeed:player.worldSeed,...(player.jiahaoVersion===1?{jiahaoVersion:1}:{}),...(player.balanceVersion===2?{balanceVersion:2}:{}),...(player.attributeRulesVersion!==undefined?{attributeRulesVersion:player.attributeRulesVersion}:{}),cohorts,years,cutoffs:years[0].cutoffs,actualFinalExams:years[0].actualFinalExams};
 }

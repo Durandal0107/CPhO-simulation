@@ -16,7 +16,7 @@ test('旧身份存档保留学习20%／15%及路过2行动点，新身份参数�
   if(id==='ordinary'){assert.equal(budget(fresh),8);assert.equal(budget(restored),9);}
   const legacy=createGame('旧规则',['grinder','lost'],()=>.9,id,{identityRulesVersion:1});assert.equal(legacy.identityRulesVersion,undefined);assert.ok(validSave(legacy));assert.equal(budget(legacy),budget(restored));
  }
- const broken=game('elite');broken.identityRulesVersion=3;assert.equal(validSave(broken),false);
+ const broken=game('elite');broken.identityRulesVersion=4;assert.equal(validSave(broken),false);
 });
 
 test('新版学习加成覆盖七项学习属性，并叠加行动收益减半',()=>{
@@ -28,4 +28,32 @@ test('新版学习加成覆盖七项学习属性，并叠加行动收益减半',
    assert.equal(effectiveGain(s,{[key]:3})[key],3);
   }
  }
+});
+
+test('新版身份：强校学习10%和心态消耗15%，天赋怪学习10%，事件正收益不加成',()=>{
+ for(const id of ['elite','prodigy']){
+  const s=createGame('新版身份',['grinder','lost'],()=>.9,id,{identityRulesVersion:3});
+  assert.equal(s.identityRulesVersion,3);assert.ok(validSave(JSON.parse(JSON.stringify(s))));
+  for(const key of ['mechanics','electro','thermal','optics','modern','lab','school']){
+   assert.ok(Math.abs(effectiveGain(s,{[key]:3},true)[key]-3.3)<1e-9);
+   assert.equal(effectiveGain(s,{[key]:3})[key],3);
+  }
+  assert.equal(effectiveGain(s,{mood:2},true).mood,2);
+  assert.ok(Math.abs(effectiveGain(s,{mood:-10}).mood-(id==='elite'?-11.5:-10))<1e-9);
+ }
+ const mixed=createGame('叠加',['grinder','lost','jiahao','allin'],()=>.9,'elite',{identityRulesVersion:3,actionRulesVersion:2});
+ assert.ok(Math.abs(effectiveGain(mixed,{mood:-5},true).mood-(-2.3))<1e-9);
+ assert.ok(Math.abs(effectiveGain(mixed,{mechanics:3},true).mechanics-4.95)<1e-9);
+ assert.equal(effectiveGain(mixed,{school:3},true).school,0);
+});
+
+test('一般路过只在偶数回合多1行动点，不累计，跨年级及准备期保持交替',()=>{
+ const s=createGame('路过',['grinder','lost','headstart'],()=>.9,'ordinary',{calendarVersion:3,identityRulesVersion:3,actionRulesVersion:3});
+ for(let day=1;day<=48;day++){
+  s.week=day;const expected=5+(day%2===0?1:0);assert.equal(budget(s),expected);
+  s.relationship=true;s.dailyPenalty=2;assert.equal(budget(s),expected-3);s.relationship=false;s.dailyPenalty=0;
+  assert.equal(budget(JSON.parse(JSON.stringify(s))),expected);
+ }
+ s.week=1;s.talents=['master','lost','headstart'];s.relationship=true;s.dailyPenalty=2;assert.equal(budget(s),1);assert.ok(validPlan(['rest'],s));
+ s.week=2;assert.equal(budget(s),2);assert.ok(validPlan(['mechanics'],s));
 });

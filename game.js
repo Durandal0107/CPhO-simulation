@@ -112,8 +112,8 @@ export function createGame(name,selected,random=Math.random,identity=null,option
  if(options.independentPoolsVersion===1)state.independentPoolsVersion=1;
  if(options.referencePolicyVersion===1)state.referencePolicyVersion=1;
  if(options.examMoodVersion===1)state.examMoodVersion=1;
- if(options.actionRulesVersion===2)state.actionRulesVersion=2;
- if(identity!==null&&options.identityRulesVersion!==1)state.identityRulesVersion=2;
+ if([2,3].includes(options.actionRulesVersion))state.actionRulesVersion=options.actionRulesVersion;
+ if(identity!==null&&options.identityRulesVersion!==1)state.identityRulesVersion=options.identityRulesVersion===3?3:2;
  if(selected.includes('allin'))state.allinMultiplier=1.5;
  if(selected.includes('crash'))state.crashVersion=2;
  if(selected.includes('lost'))state.lostProbability=.15;
@@ -139,9 +139,9 @@ export function effectiveGain(state,gain,learning=false,random=null,judgement=nu
  for(const key of Object.keys(gain)){
   let value=gain[key];
   if(learning&&random&&state.talents.includes('chaos'))value+=Math.min(8,Math.floor(random()*9))-5;
-  if(learning&&state.actionRulesVersion===2&&key==='mood'&&value<0)value*=.5;
+  if(learning&&state.actionRulesVersion>=2&&key==='mood'&&value<0)value*=.5;
   if(value>0){
-   if(learning&&(physical.includes(key)||key==='school'))value*=state.identity==='elite'?(state.identityRulesVersion===2?1.1:1.2):state.identity==='prodigy'?(state.identityRulesVersion===2?1.05:1.15):1;
+   if(learning&&(physical.includes(key)||key==='school'))value*=state.identity==='elite'?(state.identityRulesVersion>=2?1.1:1.2):state.identity==='prodigy'?(state.identityRulesVersion===3?1.1:state.identityRulesVersion===2?1.05:1.15):1;
    if(authorityBuffDays(state)>0)value*=2;
    if(state.talents.includes('crash'))value*=state.crashVersion===2?1.5:1.25;
    if(state.talents.includes('headstart')){const rates=state.headstartMultipliers??[.5,.8];value*=rates[state.week<=prepDays(state)?0:1];}
@@ -149,9 +149,10 @@ export function effectiveGain(state,gain,learning=false,random=null,judgement=nu
    if(learning&&physical.includes(key)&&state.talents.includes('intuition'))value*=1.15;
   }
   if(key==='mood'&&value<0&&state.talents.includes('jiahao'))value*=.8;
-  if(key==='mood'&&value<0&&state.identity==='elite')value*=1.1;
+  if(key==='mood'&&value<0&&state.identity==='elite')value*=state.identityRulesVersion===3?1.15:1.1;
   if(key==='school'&&state.talents.includes('allin'))value=0;
   if(learning&&state.balanceVersion===2&&value>0)value*=.5;
+  if(learning&&state.actionRulesVersion===3&&key!=='mood'&&value>0)value*=2/3;
   if(judgement==='failure')value*=value>0?.5:2;
   if(judgement==='success')value*=value>0?2:.5;
   out[key]=value;
@@ -182,7 +183,7 @@ export function applyGain(state,gain,learning=false,random=null,judgement=null){
  checkGameOver(state);
  return actual;
 }
-export function budget(state){return (state.actionRulesVersion===2?4:6)+(state.talents.includes('discipline')||state.talents.includes('grinder')?1:0)+(state.identity==='ordinary'?(state.identityRulesVersion===2?1:2):0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
+export function budget(state){return (state.actionRulesVersion>=2?4:6)+(state.talents.includes('discipline')||state.talents.includes('grinder')?1:0)+(state.identity==='ordinary'?(state.identityRulesVersion===3?(state.week%2===0?1:0):state.identityRulesVersion===2?1:2):0)-(state.relationship?1:0)-(state.dailyPenalty||0);}
 export function examThreshold(state,day){const active=state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs;const base=state.version===1?(day===8?35:day===16?62:82):(day===8?active.preliminary:day===16?active.semifinal:active.gold);return base*(state.identity==='elite'&&day!==24?1.3:1);}
 export function awardThreshold(state,award){return state.version===1?(award==='silver'?70:award==='training'?90:82):(state.yearCutoffs?.[yearIndex(state)]||state.runCutoffs||cutoffs)[award];}
 export function moodPerformance(mood){return .75+.25*clamp(mood)/100;}

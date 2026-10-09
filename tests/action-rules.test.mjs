@@ -54,5 +54,34 @@ test('模拟规划使用缩减后的完整预算，不追加行动点',()=>{
 test('新规则可以保存和恢复，旧存档保留6基础点及完整心态消耗',()=>{
  const s=make(['grinder','lost'],'ordinary');const restored=migrateSave(JSON.parse(JSON.stringify(s)));assert.ok(validSave(restored));assert.deepEqual(restored,s);assert.equal(restored.actionRulesVersion,2);
  const old=JSON.parse(JSON.stringify(s));delete old.actionRulesVersion;assert.ok(validSave(old));assert.equal(budget(old),8);assert.equal(effectiveGain(old,{mood:-5},true).mood,-5);
- restored.actionRulesVersion=3;assert.equal(validSave(restored),false);
+ restored.actionRulesVersion=4;assert.equal(validSave(restored),false);
+});
+
+test('新版行动：非心态正收益在现值上再乘2/3，负收益和所有心态收益保持不变',()=>{
+ const old=make(),fresh={...old,actionRulesVersion:3};
+ for(const action of actions){
+  const before=effectiveGain(old,action.gain,true),after=effectiveGain(fresh,action.gain,true);
+  for(const [key,value]of Object.entries(before))near(after[key],key!=='mood'&&value>0?value*2/3:value);
+ }
+ near(effectiveGain(fresh,{mechanics:3},true).mechanics,1);
+ near(effectiveGain(fresh,{lab:10/3},true).lab,10/9);
+ near(effectiveGain(fresh,{school:2},true).school,2/3);
+ const rest=effectiveGain(fresh,actions.find(a=>a.id==='rest').gain,true);near(rest.school,1/9);assert.equal(rest.mood,1);
+ assert.deepEqual(effectiveGain(fresh,{mechanics:-2,mood:-5},true),{mechanics:-2,mood:-2.5});
+ assert.deepEqual(effectiveGain(fresh,{mechanics:3,mood:5}),{mechanics:3,mood:5});
+ const chaos=make(['grinder','chaos']);chaos.actionRulesVersion=3;
+ assert.equal(effectiveGain(chaos,{mechanics:3},true,()=>0).mechanics,-2);
+ near(effectiveGain(chaos,{mechanics:-1},true,()=>.999).mechanics,2/3);
+ assert.equal(effectiveGain(chaos,{mood:2},true,()=>0).mood,-1.5);
+});
+
+test('新版行动倍率叠加身份、天赋、权威、大成功与大失败，并能保存恢复',()=>{
+ const s=createGame('新收益',['grinder','crash','headstart','allin'],()=>.9,'elite',{actionRulesVersion:3,identityRulesVersion:3,balanceVersion:2,jiahaoVersion:1});
+ s.week=2;s.authorityBuff={start:2,end:6};
+ const expected=3*1.1*2*1.5*.7*1.5*.5*(2/3);
+ near(effectiveGain(s,{mechanics:3},true).mechanics,expected);
+ near(effectiveGain(s,{mechanics:3},true,null,'failure').mechanics,expected*.5);
+ near(effectiveGain(s,{mechanics:3},true,null,'success').mechanics,expected*2);
+ assert.equal(effectiveGain(s,{school:2},true).school,0);
+ const restored=migrateSave(JSON.parse(JSON.stringify(s)));assert.ok(validSave(restored));assert.deepEqual(restored,s);
 });
